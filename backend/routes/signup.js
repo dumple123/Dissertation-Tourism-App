@@ -10,14 +10,18 @@ router.post("/", async (req, res) => {
 
   // Basic input validation
   if (!email || !username || !password) {
-    return res.status(400).json({ success: false, error: "All fields are required" });
+    return res
+      .status(400)
+      .json({ success: false, error: "All fields are required" });
   }
 
   try {
     // Check if the email is already in use
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      return res.status(400).json({ success: false, error: "Email already in use" });
+      return res
+        .status(400)
+        .json({ success: false, error: "Email already in use" });
     }
 
     // Hash the password before storing it
@@ -33,21 +37,20 @@ router.post("/", async (req, res) => {
     });
 
     const token = jwt.sign(
-      { userId: user.id, username: user.username }, // data you want inside token
-      process.env.JWT_SECRET, // secret key
-      { expiresIn: process.env.JWT_ACCESS_EXPIRY } // optional expiry
+      { userId: newUser.id, username: newUser.username },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_ACCESS_EXPIRY }
     );
 
     return res.status(200).json({
       success: true,
       token,
-      userId: user.id,
-      username: user.username,
+      userId: newUser.id,
+      username: newUser.username,
     });
-
   } catch (err) {
     console.error("Signup error:", err);
-    return res.status(500).json({success: false});
+    return res.status(500).json({ success: false });
   }
 });
 

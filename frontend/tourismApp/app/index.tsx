@@ -1,19 +1,37 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useState } from 'react';
 import AuthModal from '../components/AuthModal';
+import SignUpModal from '../components/SignUpModal';
 
 export default function HomeScreen() {
-  const [modalVisible, setModalVisible] = useState(false);
+  const [loginVisible, setLoginVisible] = useState(false);
+  const [signUpVisible, setSignUpVisible] = useState(false);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Main Page</Text>
 
-      <TouchableOpacity style={styles.button} onPress={() => setModalVisible(true)}>
+      <TouchableOpacity style={styles.button} onPress={() => setLoginVisible(true)}>
         <Text style={styles.buttonText}>Login / Sign Up</Text>
       </TouchableOpacity>
 
-      <AuthModal visible={modalVisible} onClose={() => setModalVisible(false)} />
+      <AuthModal
+        visible={loginVisible}
+        onClose={() => setLoginVisible(false)}
+        onSwitchToSignUp={() => {
+          setLoginVisible(false);
+          setSignUpVisible(true);
+        }}
+      />
+
+      <SignUpModal
+        visible={signUpVisible}
+        onClose={() => setSignUpVisible(false)}
+        onSwitchToLogin={() => {
+          setSignUpVisible(false);
+          setLoginVisible(true);
+        }}
+      />
     </View>
   );
 }

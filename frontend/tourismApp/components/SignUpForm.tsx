@@ -1,28 +1,38 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { login } from '~/api/user';
+import { signup } from '~/api/user';
 
 interface Props {
-  onSwitchToSignUp: () => void;
+  onClose: () => void;
+  onSwitchToLogin: () => void;
 }
 
-export default function AuthForm({ onSwitchToSignUp }: Props) {
+export default function SignUpForm({ onClose, onSwitchToLogin }: Props) {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleLogin = async () => {
+  const handleSignup = async () => {
     try {
-      const user = await login(email, password);
-      console.log('Logged in user:', user);
-      // Add navigation or token handling here
+      const user = await signup(username, email, password);
+      console.log('Signed up user:', user);
+      onClose(); // Close the modal after successful signup
     } catch (error) {
-      console.error('Login failed:', error);
+      console.error('Signup failed:', error);
     }
   };
 
   return (
     <View>
-      <Text style={styles.title}>Welcome Back</Text>
+      <Text style={styles.title}>Create Account</Text>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Username"
+        value={username}
+        autoCapitalize="none"
+        onChangeText={setUsername}
+      />
 
       <TextInput
         style={styles.input}
@@ -41,12 +51,12 @@ export default function AuthForm({ onSwitchToSignUp }: Props) {
         onChangeText={setPassword}
       />
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>Log In</Text>
+      <TouchableOpacity style={styles.button} onPress={handleSignup}>
+        <Text style={styles.buttonText}>Sign Up</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={onSwitchToSignUp}>
-        <Text style={styles.link}>Need an account? Sign Up</Text>
+      <TouchableOpacity onPress={onSwitchToLogin}>
+        <Text style={styles.link}>Already have an account? Log In</Text>
       </TouchableOpacity>
     </View>
   );
@@ -69,7 +79,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   button: {
-    backgroundColor: '#2A9D8F',
+    backgroundColor: '#264653',
     paddingVertical: 14,
     borderRadius: 10,
     marginBottom: 10,
@@ -80,7 +90,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   link: {
-    color: '#264653',
+    color: '#2A9D8F',
     textAlign: 'center',
     marginTop: 10,
     fontWeight: '500',

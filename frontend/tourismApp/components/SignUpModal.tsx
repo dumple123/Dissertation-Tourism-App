@@ -1,13 +1,13 @@
 import { Modal, View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import AuthForm from './AuthForm';
+import SignUpForm from './SignUpForm';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  onSwitchToSignUp: () => void;
+  onSwitchToLogin: () => void;
 }
 
-export default function AuthModal({ visible, onClose, onSwitchToSignUp }: Props) {
+export default function SignUpModal({ visible, onClose, onSwitchToLogin }: Props) {
   return (
     <Modal animationType="slide" transparent visible={visible}>
       <View style={styles.modalBackground}>
@@ -15,7 +15,7 @@ export default function AuthModal({ visible, onClose, onSwitchToSignUp }: Props)
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <Text style={styles.closeText}>×</Text>
           </TouchableOpacity>
-          <AuthForm onSwitchToSignUp={onSwitchToSignUp} />
+          <SignUpForm onClose={onClose} onSwitchToLogin={onSwitchToLogin} />
         </View>
       </View>
     </Modal>
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
   modalBackground: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center', 
+    alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 20,
   },
