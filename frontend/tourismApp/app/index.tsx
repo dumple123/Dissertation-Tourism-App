@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useState } from 'react';
-import AuthModal from '../components/AuthModal';
-import SignUpModal from '../components/SignUpModal';
+import AuthModal from '../components/User/AuthModal';
+import SignUpModal from '../components/User/SignUpModal';
 
 export default function HomeScreen() {
   const [loginVisible, setLoginVisible] = useState(false);
