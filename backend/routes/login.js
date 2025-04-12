@@ -2,6 +2,8 @@ import express from "express";
 import prisma from "../prisma/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const router = express.Router();
 
@@ -13,6 +15,7 @@ router.post("/", async (req, res) => {
   }
 
   try {
+    // Find user by email
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
       return res.status(401).json({ success: false, error: "Invalid email or password" });
@@ -24,16 +27,29 @@ router.post("/", async (req, res) => {
       return res.status(401).json({ success: false, error: "Invalid email or password" });
     }
 
-    const token = jwt.sign(
-      { userId: user.id, username: user.username }, // data you want inside token
-      process.env.JWT_SECRET, // secret key
-      { expiresIn: process.env.JWT_ACCESS_EXPIRY } // optional expiry
+    // Generate access token
+    const accessToken = jwt.sign(
+      { id: user.id, use: "access" },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: process.env.JWT_ACCESS_EXPIRY }
     );
+
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: user.id, use: "refresh" },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRY }
+    );
+
+    // Return user info along with tokens
     return res.status(200).json({
       success: true,
-      token,
       userId: user.id,
       username: user.username,
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
     });
   } catch (err) {
     console.error("Login error:", err);

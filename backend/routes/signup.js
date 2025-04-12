@@ -2,6 +2,8 @@ import express from "express";
 import prisma from "../prisma/db.js";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+dotenv.config();
 
 const router = express.Router();
 
@@ -36,21 +38,33 @@ router.post("/", async (req, res) => {
       },
     });
 
-    const token = jwt.sign(
-      { userId: newUser.id, username: newUser.username },
-      process.env.JWT_SECRET,
+    // Generate access token
+    const accessToken = jwt.sign(
+      { id: newUser.id, use: "access" },
+      process.env.JWT_ACCESS_SECRET,
       { expiresIn: process.env.JWT_ACCESS_EXPIRY }
     );
 
+    // Generate refresh token
+    const refreshToken = jwt.sign(
+      { id: newUser.id, use: "refresh" },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: process.env.JWT_REFRESH_EXPIRY }
+    );
+
+    // Return user info along with tokens
     return res.status(200).json({
       success: true,
-      token,
       userId: newUser.id,
       username: newUser.username,
+      tokens: {
+        accessToken,
+        refreshToken,
+      },
     });
   } catch (err) {
     console.error("Signup error:", err);
-    return res.status(500).json({ success: false });
+    return res.status(500).json({ success: false, error: "Internal server error" });
   }
 });
 
