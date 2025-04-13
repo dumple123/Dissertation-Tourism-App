@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { signup } from '~/api/user';
+import { useRouter } from 'expo-router';
+import { useAuth } from '~/components/User/AuthContext';
 
 interface Props {
   onClose: () => void;
@@ -8,17 +9,20 @@ interface Props {
 }
 
 export default function SignUpForm({ onClose, onSwitchToLogin }: Props) {
+  const router = useRouter();
+  const { signupUser } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleSignup = async () => {
-    try {
-      const user = await signup(username, email, password);
-      console.log('Signed up user:', user);
-      onClose(); // Close the modal after successful signup
-    } catch (error) {
-      console.error('Signup failed:', error);
+    const result = await signupUser(username, email, password);
+
+    if ('success' in result) {
+      onClose();
+      router.replace('/');
+    } else if ('error' in result) {
+      alert(result.error);
     }
   };
 

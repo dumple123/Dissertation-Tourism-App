@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { login } from '~/api/user';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuth } from '~/components/User/AuthContext'; // adjust path if needed
 
 interface Props {
   onSwitchToSignUp: () => void;
@@ -9,14 +10,16 @@ interface Props {
 export default function AuthForm({ onSwitchToSignUp }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const router = useRouter();
+  const { loginUser } = useAuth();
 
   const handleLogin = async () => {
-    try {
-      const user = await login(email, password);
-      
-      console.log('Logged in user:', user);
-    } catch (error) {
-      console.error('Login failed:', error);
+    const result = await loginUser(email, password);
+
+    if ('success' in result) {
+      router.replace('/'); // Redirect to home page
+    } else if ('error' in result) {
+      Alert.alert('Login Failed', result.error); // Show error message
     }
   };
 
