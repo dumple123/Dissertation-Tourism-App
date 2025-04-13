@@ -1,11 +1,21 @@
+import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuth } from '../components/User/AuthContext';
 import AuthModal from '../components/User/AuthModal';
 import SignUpModal from '../components/User/SignUpModal';
 
 export default function LandingPage() {
   const [loginVisible, setLoginVisible] = useState(false);
   const [signUpVisible, setSignUpVisible] = useState(false);
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.replace('/'); // go to home if already logged in
+    }
+  }, [isAuthenticated]);
 
   return (
     <View style={styles.container}>

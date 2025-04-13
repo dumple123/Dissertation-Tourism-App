@@ -1,87 +1,77 @@
-import { axiosInstance, setAuthHeader, clearAuthHeader } from './index';
-import { saveTokens, getTokens, removeTokens } from '../utils/tokenUtils'; // Import the utility functions
-import { LoginResponse } from '~/types/api/user';
+import axios, { AxiosInstance } from "axios";
+import {
+  saveTokens,
+  getTokens,
+  removeTokens,
+} from "~/utils/tokenUtils"; // path may vary depending on your structure
 
-// Login function
+export const axiosInstance: AxiosInstance = axios.create({
+  baseURL: "http://localhost:3000",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// -- Auth Header --
+export const setAuthHeader = (token: string) => {
+  axiosInstance.defaults.headers['Authorization'] = `Bearer ${token}`;
+};
+
+export const clearAuthHeader = () => {
+  delete axiosInstance.defaults.headers['Authorization'];
+};
+
+// -- Session Management --
+export const initializeAuth = async () => {
+  const { accessToken } = await getTokens();
+  if (accessToken) {
+    setAuthHeader(accessToken);
+    return true;
+  }
+  return false;
+};
+
+export const logout = async () => {
+  await removeTokens();
+  clearAuthHeader();
+  return { success: true };
+};
+
+// -- Auth API calls with centralized error handling --
 export const login = async (email: string, password: string) => {
   try {
-    const login = await axiosInstance.post<LoginResponse>('/login', {
-      email,
-      password,
-    });
+    const res = await axiosInstance.post("/login", { email, password });
+    const { accessToken, refreshToken, user } = res.data;
 
-    // Store the tokens (Access and Refresh tokens)
-    const { accessToken, refreshToken } = login.data.tokens;
-
-    // Set the Authorization header for future requests
+    await saveTokens(accessToken, refreshToken);
     setAuthHeader(accessToken);
 
-    // Store both tokens securely (for mobile/web)
-    await saveTokens(accessToken, refreshToken);
-
-    return login.data; // Return login data or whatever is required
-  } catch (error) {
-    console.error('Login error:', error);
-    throw error;
+    return { accessToken, user };
+  } catch (error: any) {
+    const message = extractErrorMessage(error, "Login failed");
+    return { error: message };
   }
 };
 
-// Signup function
 export const signup = async (username: string, email: string, password: string) => {
   try {
-    // Send signup request to backend
-    const response = await axiosInstance.post<LoginResponse>('/signup', {
-      username,
-      email,
-      password,
-    });
+    const res = await axiosInstance.post("/signup", { username, email, password });
+    const { accessToken, refreshToken, user } = res.data;
 
-    // Store the tokens (Access and Refresh tokens) after successful signup
-    const { accessToken, refreshToken } = response.data.tokens;
-
-    // Set the Authorization header for future requests
+    await saveTokens(accessToken, refreshToken);
     setAuthHeader(accessToken);
 
-    // Store both tokens securely (for mobile/web)
-    await saveTokens(accessToken, refreshToken);
-
-    return response.data; // Return signup response or data as required
-  } catch (error) {
-    console.error('Signup error:', error);
-    throw error;
+    return { accessToken, user };
+  } catch (error: any) {
+    const message = extractErrorMessage(error, "Signup failed");
+    return { error: message };
   }
 };
 
-// Refresh token function (using the refresh token stored in SecureStore)
-export const refreshToken = async () => {
-  const { refreshToken } = await getTokens(); // Retrieve securely stored refresh token
-  if (!refreshToken) {
-    throw new Error('No refresh token available');
+// -- Shared Error Formatter --
+const extractErrorMessage = (error: any, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    return error.response?.data?.message || fallback;
   }
-
-  try {
-    const response = await axiosInstance.post<{ accessToken: string }>('/refreshToken', {
-      refreshToken,
-    });
-
-    const { accessToken } = response.data;
-
-    // Set the new access token in the Authorization header
-    setAuthHeader(accessToken);
-
-    // Optionally, you can save the new tokens (if your logic allows new refresh tokens)
-    await saveTokens(accessToken, refreshToken);
-
-    return accessToken; // Return the new access token
-  } catch (error) {
-    console.error('Error refreshing token:', error);
-    throw error;
-  }
-};
-
-// Logout function
-export const logout = async () => {
-  // Clear the stored token and refresh token
-  clearAuthHeader();
-  await removeTokens(); // Clear tokens securely
+  return fallback;
 };

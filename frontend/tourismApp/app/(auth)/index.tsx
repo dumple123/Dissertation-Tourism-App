@@ -1,9 +1,11 @@
 import { View, Text, StyleSheet } from 'react-native';
+import LogoutButton from '~/components/User/LogoutButton';
 
 export default function HomePage() {
   return (
     <View style={styles.container}>
       <Text style={styles.message}>You are signed in</Text>
+      <LogoutButton />
     </View>
   );
 }

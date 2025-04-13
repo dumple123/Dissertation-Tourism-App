@@ -1,46 +1,46 @@
-import * as SecureStore from 'expo-secure-store'; // For React Native
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-// Store tokens securely (for React Native with expo-secure-store)
-export const saveTokens = async (accessToken: string, refreshToken: string) => {
-  // React Native: Store tokens using expo-secure-store
-  await SecureStore.setItemAsync('accessToken', accessToken);
-  await SecureStore.setItemAsync('refreshToken', refreshToken);
+// -- Utility: Get Storage Engine --
 
-  // Web: Use AsyncStorage if you're building for React Native Web
-  if (typeof window !== 'undefined') {
-    // Use SecureStorage for better security in React Native Web
-    await SecureStore.setItemAsync('accessToken', accessToken);
-    await SecureStore.setItemAsync('refreshToken', refreshToken);
+const storage = {
+  setItem: async (key: string, value: string) => {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  getItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    } else {
+      return await SecureStore.getItemAsync(key);
+    }
+  },
+  removeItem: async (key: string) => {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
   }
 };
 
-// Retrieve tokens securely
+// -- Public Token API --
+
+export const saveTokens = async (accessToken: string, refreshToken: string) => {
+  await storage.setItem('accessToken', accessToken);
+  await storage.setItem('refreshToken', refreshToken);
+};
+
 export const getTokens = async () => {
-  let accessToken = null;
-  let refreshToken = null;
-
-  // React Native: Retrieve tokens using expo-secure-store
-  accessToken = await SecureStore.getItemAsync('accessToken');
-  refreshToken = await SecureStore.getItemAsync('refreshToken');
-
-  // Web: Use AsyncStorage for React Native Web
-  if (typeof window !== 'undefined') {
-    accessToken = await SecureStore.getItemAsync('accessToken');
-    refreshToken = await SecureStore.getItemAsync('refreshToken');
-  }
-
+  const accessToken = await storage.getItem('accessToken');
+  const refreshToken = await storage.getItem('refreshToken');
   return { accessToken, refreshToken };
 };
 
-// Remove tokens on logout
 export const removeTokens = async () => {
-  // React Native: Delete tokens from expo-secure-store
-  await SecureStore.deleteItemAsync('accessToken');
-  await SecureStore.deleteItemAsync('refreshToken');
-
-  // Web: Clear tokens from localStorage for React Native Web
-  if (typeof window !== 'undefined') {
-    await SecureStore.deleteItemAsync('accessToken');
-    await SecureStore.deleteItemAsync('refreshToken');
-  }
+  await storage.removeItem('accessToken');
+  await storage.removeItem('refreshToken');
 };

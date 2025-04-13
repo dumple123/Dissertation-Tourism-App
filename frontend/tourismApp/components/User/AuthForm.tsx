@@ -13,8 +13,8 @@ export default function AuthForm({ onSwitchToSignUp }: Props) {
   const handleLogin = async () => {
     try {
       const user = await login(email, password);
+      
       console.log('Logged in user:', user);
-      // Add navigation or token handling here
     } catch (error) {
       console.error('Login failed:', error);
     }
