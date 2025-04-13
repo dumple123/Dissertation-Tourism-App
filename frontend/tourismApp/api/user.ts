@@ -1,25 +1,6 @@
-import axios, { AxiosInstance } from "axios";
-import {
-  saveTokens,
-  getTokens,
-  removeTokens,
-} from "~/utils/tokenUtils"; // path may vary depending on your structure
-
-export const axiosInstance: AxiosInstance = axios.create({
-  baseURL: "http://localhost:3000",
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
-// -- Auth Header --
-export const setAuthHeader = (token: string) => {
-  axiosInstance.defaults.headers['Authorization'] = `Bearer ${token}`;
-};
-
-export const clearAuthHeader = () => {
-  delete axiosInstance.defaults.headers['Authorization'];
-};
+import axios from "axios";
+import { saveTokens, getTokens, removeTokens } from "~/utils/tokenUtils"; 
+import { axiosInstance, setAuthHeader, clearAuthHeader } from "~/api/index";
 
 // -- Session Management --
 export const initializeAuth = async () => {
@@ -53,9 +34,17 @@ export const login = async (email: string, password: string) => {
   }
 };
 
-export const signup = async (username: string, email: string, password: string) => {
+export const signup = async (
+  username: string,
+  email: string,
+  password: string
+) => {
   try {
-    const res = await axiosInstance.post("/signup", { username, email, password });
+    const res = await axiosInstance.post("/signup", {
+      username,
+      email,
+      password,
+    });
     const { accessToken, refreshToken, user } = res.data;
 
     await saveTokens(accessToken, refreshToken);

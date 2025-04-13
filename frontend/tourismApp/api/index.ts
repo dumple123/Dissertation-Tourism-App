@@ -1,7 +1,9 @@
 import axios, { AxiosInstance, AxiosError } from "axios";
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL;
+
 export const axiosInstance: AxiosInstance = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },

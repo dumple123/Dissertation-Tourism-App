@@ -9,6 +9,8 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 .env
+.idea
+.idea/
 web-build/
 # expo router
 expo-env.d.ts

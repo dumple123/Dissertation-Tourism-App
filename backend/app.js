@@ -29,6 +29,6 @@ app.use("/protected-route", verifyToken, (req, res) => {
   });
 
 // Start server
-server.listen("3000", function () {
-    console.log("Server listening on port " + server.address().port)
-})
+server.listen(3000, '0.0.0.0', function () {
+  console.log("Server listening on port " + server.address().port);
+});
