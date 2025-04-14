@@ -6,7 +6,7 @@
     "scheme": "tourismApp",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -30,7 +30,8 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.anonymous.tourismApp"
+      "package": "com.anonymous.tourismApp",
+      "permissions": ["ACCESS_FINE_LOCATION"]
     },
     "plugins": [
       "expo-router",
