@@ -9,7 +9,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const isLoggedIn = await initializeAuth(); // now async
+      const isLoggedIn = await initializeAuth();
       setIsAuthenticated(isLoggedIn);
     };
     checkAuth();
@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    await userLogout(); // now async
+    await userLogout();
     setIsAuthenticated(false);
   };
 
