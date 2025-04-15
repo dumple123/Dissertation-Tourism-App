@@ -12,11 +12,13 @@ const storage = {
     }
   },
   getItem: async (key: string) => {
+    let value;
     if (Platform.OS === 'web') {
-      return localStorage.getItem(key);
+      value = localStorage.getItem(key);
     } else {
-      return await SecureStore.getItemAsync(key);
+      value = await SecureStore.getItemAsync(key);
     }
+    return value;
   },
   removeItem: async (key: string) => {
     if (Platform.OS === 'web') {

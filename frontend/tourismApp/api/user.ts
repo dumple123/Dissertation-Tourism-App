@@ -22,13 +22,22 @@ export const logout = async () => {
 export const login = async (email: string, password: string) => {
   try {
     const res = await axiosInstance.post("/login", { email, password });
-    const { accessToken, refreshToken, user } = res.data;
+
+    // Log full response to debug structure
+    console.log("Login Response:", res.data);
+
+    const { accessToken, refreshToken } = res.data.tokens;
+    const user = {
+      id: res.data.userId,
+      username: res.data.username,
+    };
 
     await saveTokens(accessToken, refreshToken);
     setAuthHeader(accessToken);
 
     return { accessToken, user };
   } catch (error: any) {
+    console.error("Login error:", error);
     const message = extractErrorMessage(error, "Login failed");
     return { error: message };
   }
@@ -45,13 +54,22 @@ export const signup = async (
       email,
       password,
     });
-    const { accessToken, refreshToken, user } = res.data;
+
+    // Log full response to debug structure
+    console.log("Signup Response:", res.data);
+
+    const { accessToken, refreshToken } = res.data.tokens;
+    const user = {
+      id: res.data.userId,
+      username: res.data.username,
+    };
 
     await saveTokens(accessToken, refreshToken);
     setAuthHeader(accessToken);
 
     return { accessToken, user };
   } catch (error: any) {
+    console.error("Signup error:", error);
     const message = extractErrorMessage(error, "Signup failed");
     return { error: message };
   }
