@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createUserLocationMarker } from './utils/createUserLocationMarker';
+import Constants from 'expo-constants';
 
-
-mapboxgl.accessToken = 'pk.eyJ1IjoiZHVtcGxlMTIzIiwiYSI6ImNtOWFhbDd2YzAzMWoyaXNnemY3ZmkxamEifQ.l0vmJeNqgqNpL7vD94RrMA';
+mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
 export default function MapViewComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);

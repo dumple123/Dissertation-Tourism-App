@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
+import Constants from 'expo-constants';
 
-MapboxGL.setAccessToken('pk.eyJ1IjoiZHVtcGxlMTIzIiwiYSI6ImNtOWFhbDd2YzAzMWoyaXNnemY3ZmkxamEifQ.l0vmJeNqgqNpL7vD94RrMA');
+MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 
 export default function MapViewComponent() {
   const [coords, setCoords] = useState<[number, number]>([-1.615, 54.978]);
