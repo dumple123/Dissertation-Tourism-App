@@ -24,9 +24,9 @@ export default function MapViewComponent() {
         );
 
         if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log("✅ Location permission granted");
+          console.log("Location permission granted");
         } else {
-          console.warn("❌ Location permission denied");
+          console.warn("Location permission denied");
         }
       }
     };
@@ -45,13 +45,13 @@ export default function MapViewComponent() {
             loc.coords.longitude,
             loc.coords.latitude,
           ];
-          console.log("✅ Initial location:", initialCoords);
+          console.log("Initial location:", initialCoords);
           setCoords(initialCoords);
         } else {
-          console.warn("⚠️ No initial location available (GPS off or denied)");
+          console.warn("No initial location available (GPS off or denied)");
         }
       } catch (err) {
-        console.error("❌ Error fetching initial location:", err);
+        console.error("Error fetching initial location:", err);
       }
     };
 
