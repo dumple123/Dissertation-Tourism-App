@@ -37,7 +37,7 @@ export default function MapViewComponent() {
   // Fetch last known location on mount
   useEffect(() => {
     const fetchInitialLocation = async () => {
-      console.log("📍 Fetching last known location...");
+      console.log("Fetching last known location...");
       try {
         const loc = await MapboxGL.locationManager.getLastKnownLocation();
         if (loc?.coords) {
@@ -64,7 +64,7 @@ export default function MapViewComponent() {
       loc.coords.longitude,
       loc.coords.latitude,
     ];
-    console.log("📡 Live location update:", newCoords);
+    console.log("Live location update:", newCoords);
 
     setCoords(newCoords);
 
