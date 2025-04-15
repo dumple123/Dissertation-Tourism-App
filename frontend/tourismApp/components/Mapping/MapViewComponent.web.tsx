@@ -26,7 +26,7 @@ export default function MapViewComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
-      console.log('🗺️ Map loaded');
+      console.log('Map loaded');
 
       navigator.geolocation.watchPosition(
         (position) => {
@@ -34,7 +34,7 @@ export default function MapViewComponent() {
             position.coords.longitude,
             position.coords.latitude,
           ];
-          console.log('📍 Position update:', coords);
+          console.log('Position update:', coords);
 
           if (!markerRef.current) {
             markerRef.current = new mapboxgl.Marker({ element: markerEl })
