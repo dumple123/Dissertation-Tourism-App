@@ -6,3 +6,6 @@ for android build
 $env:MAPBOX_DOWNLOAD_TOKEN="insert token"
 check it works with 
 System.getenv("MAPBOX_DOWNLOAD_TOKEN")
+
+
+update env do npx expo start -c

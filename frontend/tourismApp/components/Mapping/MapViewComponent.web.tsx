@@ -19,7 +19,7 @@ export default function MapViewComponent() {
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [-1.615, 54.978],
+      center: [-1.615, 54.978], // Newcastle default
       zoom: 14,
     });
 

@@ -1,91 +1,72 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, PermissionsAndroid, Platform } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 
+// Utility functions
+import { requestLocationPermission } from './utils/requestLocationPermission';
+import { getInitialLocation } from './utils/getInitialLocation';
+import { handleLocationUpdate } from './utils/handleLocationUpdate';
+
+// Set your Mapbox token from environment variables
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 
 export default function MapViewComponent() {
+  // State for user's coordinates
   const [coords, setCoords] = useState<[number, number] | null>(null);
+
+  // Flag to ensure camera only centers once
   const [hasCentered, setHasCentered] = useState(false);
+
+  // Flag to track if location permission was granted
+  const [locationReady, setLocationReady] = useState(false);
+
+  // Ref to access the Mapbox camera
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
-  // Request location permission (Android only)
+  // Request location permissions on mount
   useEffect(() => {
-    const requestPermission = async () => {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {
-            title: "Location Permission",
-            message: "This app needs access to your location to show your position on the map.",
-            buttonPositive: "OK",
-          }
-        );
-
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log("Location permission granted");
-        } else {
-          console.warn("Location permission denied");
-        }
-      }
+    const checkPermission = async () => {
+      const granted = await requestLocationPermission();
+      setLocationReady(granted);
     };
-
-    requestPermission();
+    checkPermission();
   }, []);
 
-  // Fetch last known location on mount
+  // Fetch user's last known location once permission is granted
   useEffect(() => {
-    const fetchInitialLocation = async () => {
-      console.log("Fetching last known location...");
-      try {
-        const loc = await MapboxGL.locationManager.getLastKnownLocation();
-        if (loc?.coords) {
-          const initialCoords: [number, number] = [
-            loc.coords.longitude,
-            loc.coords.latitude,
-          ];
-          console.log("Initial location:", initialCoords);
-          setCoords(initialCoords);
-        } else {
-          console.warn("No initial location available (GPS off or denied)");
-        }
-      } catch (err) {
-        console.error("Error fetching initial location:", err);
+    const initLocation = async () => {
+      if (!locationReady) return;
+
+      const initialCoords = await getInitialLocation();
+      if (initialCoords) {
+        setCoords(initialCoords);
       }
     };
-
-    fetchInitialLocation();
-  }, []);
-
-  // Handle live updates
-  const handleLocationUpdate = (loc: MapboxGL.Location) => {
-    const newCoords: [number, number] = [
-      loc.coords.longitude,
-      loc.coords.latitude,
-    ];
-    console.log("Live location update:", newCoords);
-
-    setCoords(newCoords);
-
-    if (!hasCentered) {
-      cameraRef.current?.flyTo(newCoords, 1000);
-      setHasCentered(true);
-    }
-  };
+    initLocation();
+  }, [locationReady]);
 
   return (
     <View style={styles.container}>
       <MapboxGL.MapView style={styles.map}>
+        {/* Map camera that centers and zooms */}
         <MapboxGL.Camera
           ref={cameraRef}
           zoomLevel={14}
-          centerCoordinate={coords ?? [-1, 51]} // Default center (won't render marker)
+          centerCoordinate={coords ?? [-1, 51]} // Default fallback center
         />
-        <MapboxGL.UserLocation
-          visible={false}
-          onUpdate={handleLocationUpdate}
-        />
+
+        {/* Track user location in the background */}
+        {locationReady && (
+          <MapboxGL.UserLocation
+            visible={false}
+            onUpdate={(loc) =>
+              handleLocationUpdate(loc, setCoords, cameraRef, hasCentered, setHasCentered)
+            }
+          />
+        )}
+
+        {/* Display user location as a custom marker */}
         {coords && (
           <MapboxGL.PointAnnotation id="user-location" coordinate={coords}>
             <View style={styles.marker} />
@@ -96,6 +77,7 @@ export default function MapViewComponent() {
   );
 }
 
+// Styles for the map container and custom marker
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
