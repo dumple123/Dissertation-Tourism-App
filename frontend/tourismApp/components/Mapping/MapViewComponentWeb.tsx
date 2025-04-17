@@ -3,30 +3,33 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
 
-// Utility imports
+// Hooks & utilities
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
 import { usePOIs } from './utils/POI/usePOIs';
 import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
 
+// Indoor drawing tools
+import {
+  DrawingProvider,
+  DrawingHandler,
+  PolygonRenderer,
+  SaveButton,
+} from '~/components/Mapping/Indoor';
+
 // Set Mapbox access token from environment config
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
 export default function MapViewComponent() {
-  // DOM reference for the map container
   const mapContainerRef = useRef<HTMLDivElement>(null);
-
-  // Internal references to the map and puck manager
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
 
-  // Hook to manage POIs (state + add function)
   const { pois, addPOI } = usePOIs();
-
-  // Hook to get user location
   const { coords, error } = useUserLocation();
 
+  // Initialize map when coordinates are available
   useEffect(() => {
     const containerElement = mapContainerRef.current;
     if (!containerElement || !coords) return;
@@ -36,7 +39,7 @@ export default function MapViewComponent() {
     }
 
     const map = new mapboxgl.Map({
-      container: containerElement as HTMLElement, // Ensure type compatibility
+      container: containerElement,
       style: 'mapbox://styles/mapbox/streets-v11',
       center: coords,
       zoom: 14,
@@ -47,20 +50,17 @@ export default function MapViewComponent() {
     map.on('load', () => {
       console.log('Map loaded');
 
-      // Create and set up the simple puck marker
+      // Create and update user location puck
       puckRef.current = createUserLocationPuck(map);
-
-      // Update puck location when coords change
       puckRef.current?.update(coords);
     });
 
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-      }
+      map.remove();
     };
   }, [coords]);
 
+  // Render POIs
   useEffect(() => {
     if (!mapRef.current) return;
 
@@ -69,11 +69,20 @@ export default function MapViewComponent() {
   }, [pois]);
 
   return (
-    <>
+    <DrawingProvider>
       {/* Map container */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100vh' }} />
 
-      {/* Floating button to add a POI based on current location */}
+      {/* Indoor drawing tools */}
+      {mapRef.current && (
+        <>
+          <DrawingHandler map={mapRef.current} />
+          <PolygonRenderer map={mapRef.current} />
+          <SaveButton />
+        </>
+      )}
+
+      {/* Add POI button */}
       <button
         onClick={() => createPOI(addPOI)}
         style={{
@@ -93,7 +102,7 @@ export default function MapViewComponent() {
         Add POI
       </button>
 
-      {/* Optional: display error if location fails */}
+      {/* Optional: location error */}
       {error && (
         <div
           style={{
@@ -111,6 +120,6 @@ export default function MapViewComponent() {
           Location error: {error}
         </div>
       )}
-    </>
+    </DrawingProvider>
   );
 }
