@@ -8,6 +8,7 @@ import { createUserLocationPuck } from './utils/createUserLocationPuck';
 import { usePOIs } from './utils/POI/usePOIs';
 import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
+import { useUserLocation } from './Hooks/useUserLocation';
 
 // Set Mapbox access token from environment config
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
@@ -23,14 +24,21 @@ export default function MapViewComponent() {
   // Hook to manage POIs (state + add function)
   const { pois, addPOI } = usePOIs();
 
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
+  // Hook to get user location
+  const { coords, error } = useUserLocation();
 
-    // Create the Mapbox map
+  useEffect(() => {
+    const containerElement = mapContainerRef.current;
+    if (!containerElement || !coords) return;
+
+    if (!mapboxgl.accessToken) {
+      console.warn('Missing Mapbox access token!');
+    }
+
     const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
+      container: containerElement as HTMLElement, // Ensure type compatibility
       style: 'mapbox://styles/mapbox/streets-v11',
-      center: [-1.615, 54.978], // Default center: Newcastle
+      center: coords,
       zoom: 14,
     });
 
@@ -42,22 +50,16 @@ export default function MapViewComponent() {
       // Create and set up the simple puck marker
       puckRef.current = createUserLocationPuck(map);
 
-      // Track and update location
-      navigator.geolocation.watchPosition(
-        (position) => {
-          const coords: [number, number] = [
-            position.coords.longitude,
-            position.coords.latitude,
-          ];
-          puckRef.current?.update(coords);
-        },
-        (err) => console.warn('Geolocation error:', err),
-        { enableHighAccuracy: true }
-      );
+      // Update puck location when coords change
+      puckRef.current?.update(coords);
     });
 
-    return () => map.remove();
-  }, []);
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+      }
+    };
+  }, [coords]);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -86,9 +88,29 @@ export default function MapViewComponent() {
           borderRadius: '6px',
           cursor: 'pointer',
         }}
+        aria-label="Add Point of Interest"
       >
         Add POI
       </button>
+
+      {/* Optional: display error if location fails */}
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 20,
+            left: 20,
+            right: 20,
+            backgroundColor: '#fff3f3',
+            padding: 10,
+            borderRadius: 8,
+            color: '#cc0000',
+            textAlign: 'center',
+          }}
+        >
+          Location error: {error}
+        </div>
+      )}
     </>
   );
 }

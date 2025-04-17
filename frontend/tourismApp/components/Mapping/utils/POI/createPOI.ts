@@ -1,5 +1,3 @@
-import { POI } from './usePOIs';
-
 export function createPOI(addPOI: (lng: number, lat: number, label?: string) => void) {
   const label = prompt('Enter a label for this point of interest:');
   if (!label) return;
