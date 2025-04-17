@@ -1,9 +1,15 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import MapViewComponent from '~/components/Mapping/MapViewComponent';
-console.log("MapViewComponent =", MapViewComponent);
+import React, { useMemo } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 
 export default function MapPage() {
+  const MapViewComponent = useMemo(() => {
+    if (Platform.OS === 'web') {
+      return require('~/components/Mapping/MapViewComponentWeb').default;
+    } else {
+      return require('~/components/Mapping/MapViewComponentNative').default;
+    }
+  }, []);
+
   return (
     <View style={styles.container}>
       <MapViewComponent />
