@@ -1,0 +1,33 @@
+[
+    {
+      "id": "1",
+      "lng": -1.615,
+      "lat": 54.978,
+      "label": "Newcastle University"
+    },
+    {
+      "id": "2",
+      "lng": -1.6129,
+      "lat": 54.973,
+      "label": "Grey’s Monument"
+    },
+    {
+      "id": "3",
+      "lng": -1.617439,
+      "lat": 54.971447,
+      "label": "The Quayside"
+    },
+    {
+      "id": "4",
+      "lng": -1.62182,
+      "lat": 54.97457,
+      "label": "St Nicholas’ Cathedral"
+    },
+    {
+      "id": "5",
+      "lng": -1.605,
+      "lat": 54.972,
+      "label": "Ouseburn Valley"
+    }
+  ]
+  
