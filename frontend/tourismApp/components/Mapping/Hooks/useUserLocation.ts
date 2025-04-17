@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
 import { Magnetometer } from 'expo-sensors';
+import { Platform } from 'react-native';
 
 export function useUserLocation() {
   const [coords, setCoords] = useState<[number, number] | null>(null);
@@ -13,10 +14,8 @@ export function useUserLocation() {
     let subscription: Location.LocationSubscription | null = null;
     let lastCoords: [number, number] | null = null;
 
-    // Helper to convert degrees to radians
     const toRad = (deg: number) => (deg * Math.PI) / 180;
 
-    // Haversine formula to calculate distance between two GPS points
     const haversineDistance = (a: [number, number], b: [number, number]): number => {
       const R = 6371000;
       const dLat = toRad(b[1] - a[1]);
@@ -65,15 +64,22 @@ export function useUserLocation() {
   }, []);
 
   useEffect(() => {
-    // Get heading using Magnetometer
-    const subscription = Magnetometer.addListener((data) => {
-      let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
-      angle = angle >= 0 ? angle : 360 + angle;
-      setHeading(angle);
-    });
-    Magnetometer.setUpdateInterval(100);
+    if (Platform.OS !== 'web') {
+      const subscription = Magnetometer.addListener((data) => {
+        let angle = Math.atan2(data.y, data.x) * (180 / Math.PI);
+        angle = angle >= 0 ? angle : 360 + angle;
+        setHeading(angle);
+      });
 
-    return () => subscription.remove();
+      Magnetometer.setUpdateInterval(100);
+
+      return () => {
+        subscription.remove();
+      };
+    } else {
+      // Fallback heading for web
+      setHeading(0);
+    }
   }, []);
 
   return { coords, error, heading };
