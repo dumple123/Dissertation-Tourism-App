@@ -1,7 +1,7 @@
 import { useDrawingContext } from './useDrawing';
 
 export default function SaveButton() {
-  const { rings, buildingName } = useDrawingContext();
+  const { rings, buildingName, completeShape } = useDrawingContext();
 
   const handleSave = () => {
     if (!rings || rings.length === 0 || rings[0].length < 3) return;
@@ -10,20 +10,25 @@ export default function SaveButton() {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: rings.map((ring) => [...ring, ring[0]]), // Close each ring
+        coordinates: rings.map((ring) => [...ring, ring[0]]),
       },
       properties: {
         name: buildingName,
       },
     };
 
-    const blob = new Blob([JSON.stringify(geojson)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
+    // Save to localStorage
+    const existing = localStorage.getItem('savedBuildings');
+    const parsed = existing ? JSON.parse(existing) : [];
 
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${buildingName || 'building'}-outline.geojson`;
-    a.click();
+    parsed.push(geojson);
+
+    localStorage.setItem('savedBuildings', JSON.stringify(parsed));
+
+    alert(`Saved "${buildingName}" locally!`);
+
+    // 🔒 Lock editing
+    completeShape();
   };
 
   return (
