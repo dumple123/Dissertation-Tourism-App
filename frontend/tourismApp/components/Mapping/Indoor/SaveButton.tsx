@@ -1,7 +1,7 @@
 import { useDrawingContext } from './useDrawing';
 
 export default function SaveButton() {
-  const { points } = useDrawingContext();
+  const { points, buildingName } = useDrawingContext();
 
   const handleSave = () => {
     if (points.length < 3) return;
@@ -11,6 +11,9 @@ export default function SaveButton() {
       geometry: {
         type: 'Polygon',
         coordinates: [[...points, points[0]]],
+      },
+      properties: {
+        name: buildingName,
       },
     };
 

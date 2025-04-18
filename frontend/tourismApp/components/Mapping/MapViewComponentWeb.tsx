@@ -16,10 +16,26 @@ import {
   DrawingHandler,
   PolygonRenderer,
   SaveButton,
+  useDrawingContext,
 } from '~/components/Mapping/Indoor';
+import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButton';
 
 // Set Mapbox access token from environment config
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
+
+function DrawingTools({ map }: { map: mapboxgl.Map }) {
+  const { isDrawing } = useDrawingContext();
+
+  if (!isDrawing) return null;
+
+  return (
+    <>
+      <DrawingHandler map={map} />
+      <PolygonRenderer map={map} />
+      <SaveButton />
+    </>
+  );
+}
 
 export default function MapViewComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -73,14 +89,11 @@ export default function MapViewComponent() {
       {/* Map container */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100vh' }} />
 
-      {/* Indoor drawing tools */}
-      {mapRef.current && (
-        <>
-          <DrawingHandler map={mapRef.current} />
-          <PolygonRenderer map={mapRef.current} />
-          <SaveButton />
-        </>
-      )}
+      {/* Drawing UI, only if drawing has been started */}
+      {mapRef.current && <DrawingTools map={mapRef.current} />}
+
+      {/* Create Building Button */}
+      <CreateBuildingButton />
 
       {/* Add POI button */}
       <button
