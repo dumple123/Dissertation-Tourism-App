@@ -11,27 +11,18 @@ export default function CreateBuildingButton() {
   };
 
   return (
-    <div
+    <button
+      onClick={handleClick}
       style={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        zIndex: 10,
+        padding: '8px 12px',
+        backgroundColor: '#E76F51',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '6px',
+        cursor: 'pointer',
       }}
     >
-      <button
-        onClick={handleClick}
-        style={{
-          padding: '8px 12px',
-          backgroundColor: '#E76F51',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-        }}
-      >
-        Create Building
-      </button>
-    </div>
+      Create Building
+    </button>
   );
 }

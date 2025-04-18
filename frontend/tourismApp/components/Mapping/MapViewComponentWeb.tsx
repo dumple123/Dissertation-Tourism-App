@@ -2,60 +2,37 @@ import React, { useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
-
-// Hooks & utilities
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
-import { usePOIs } from './utils/POI/usePOIs';
 import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
-
-// Indoor drawing tools
+import { usePOIs } from './utils/POI/usePOIs';
 import {
   DrawingProvider,
   DrawingHandler,
   PolygonRenderer,
   SaveButton,
-  useDrawingContext,
 } from '~/components/Mapping/Indoor';
+import { useDrawingContext } from '~/components/Mapping/Indoor/useDrawing';
 import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButton';
 
-// Set Mapbox access token from environment config
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
-function DrawingTools({ map }: { map: mapboxgl.Map }) {
-  const { isDrawing } = useDrawingContext();
-
-  if (!isDrawing) return null;
-
-  return (
-    <>
-      <DrawingHandler map={map} />
-      <PolygonRenderer map={map} />
-      <SaveButton />
-    </>
-  );
-}
-
-export default function MapViewComponent() {
+function InnerMapComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
 
-  const { pois, addPOI } = usePOIs();
   const { coords, error } = useUserLocation();
+  const { pois, addPOI } = usePOIs();
+  const { isDrawing } = useDrawingContext();
 
-  // Initialize map when coordinates are available
   useEffect(() => {
-    const containerElement = mapContainerRef.current;
-    if (!containerElement || !coords) return;
-
-    if (!mapboxgl.accessToken) {
-      console.warn('Missing Mapbox access token!');
-    }
+    const container = mapContainerRef.current;
+    if (!container || !coords) return;
 
     const map = new mapboxgl.Map({
-      container: containerElement,
+      container,
       style: 'mapbox://styles/mapbox/streets-v11',
       center: coords,
       zoom: 14,
@@ -64,58 +41,80 @@ export default function MapViewComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
-      console.log('Map loaded');
-
-      // Create and update user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
     });
 
-    return () => {
-      map.remove();
-    };
+    return () => map.remove();
   }, [coords]);
 
-  // Render POIs
   useEffect(() => {
     if (!mapRef.current) return;
-
     const markers = renderPOIs(pois, mapRef.current);
     return () => markers.forEach((m) => m.remove());
   }, [pois]);
 
   return (
-    <DrawingProvider>
-      {/* Map container */}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100vh' }} />
-
-      {/* Drawing UI, only if drawing has been started */}
-      {mapRef.current && <DrawingTools map={mapRef.current} />}
-
-      {/* Create Building Button */}
-      <CreateBuildingButton />
-
-      {/* Add POI button */}
-      <button
-        onClick={() => createPOI(addPOI)}
+    <>
+      <div
+        ref={mapContainerRef}
         style={{
-          position: 'absolute',
-          top: 20,
-          right: 20,
-          zIndex: 10,
-          padding: '8px 12px',
-          backgroundColor: '#2A9D8F',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
+          width: '100%',
+          height: '100vh',
+          cursor: isDrawing ? 'crosshair' : 'grab',
         }}
-        aria-label="Add Point of Interest"
-      >
-        Add POI
-      </button>
+      />
 
-      {/* Optional: location error */}
+      {/* Drawing tools */}
+      {mapRef.current && isDrawing && (
+        <>
+          <DrawingHandler map={mapRef.current} />
+          <PolygonRenderer map={mapRef.current} />
+          <div
+            style={{
+              position: 'absolute',
+              top: 20,
+              right: 20,
+              zIndex: 10,
+            }}
+          >
+            <SaveButton />
+          </div>
+        </>
+      )}
+
+      {/* Top-right button stack */}
+      {!isDrawing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            alignItems: 'flex-end',
+          }}
+        >
+          <button
+            onClick={() => createPOI(addPOI)}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#2A9D8F',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+            }}
+          >
+            Add POI
+          </button>
+          <CreateBuildingButton />
+        </div>
+      )}
+
+      {/* Error message */}
       {error && (
         <div
           style={{
@@ -133,6 +132,14 @@ export default function MapViewComponent() {
           Location error: {error}
         </div>
       )}
+    </>
+  );
+}
+
+export default function MapViewComponent() {
+  return (
+    <DrawingProvider>
+      <InnerMapComponent />
     </DrawingProvider>
   );
 }

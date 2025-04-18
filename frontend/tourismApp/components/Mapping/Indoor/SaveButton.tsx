@@ -30,16 +30,13 @@ export default function SaveButton() {
     <button
       onClick={handleSave}
       style={{
-        position: 'absolute',
-        top: 20,
-        left: 20,
-        zIndex: 10,
         padding: '8px 12px',
         backgroundColor: '#264653',
         color: '#fff',
         border: 'none',
         borderRadius: '6px',
         cursor: 'pointer',
+        width: '100%',
       }}
     >
       Save Building
