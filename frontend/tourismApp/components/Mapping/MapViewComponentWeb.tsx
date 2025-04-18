@@ -15,6 +15,7 @@ import {
 } from '~/components/Mapping/Indoor';
 import { useDrawingContext } from '~/components/Mapping/Indoor/useDrawing';
 import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButton';
+import SavedBuildingsRenderer from '~/components/Mapping/Indoor/SavedBuildingsRenderer';
 
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
@@ -49,7 +50,7 @@ function InnerMapComponent() {
     return () => map.remove();
   }, [coords]);
 
-  // Add POI markers when map or POIs change
+  // Render POIs
   useEffect(() => {
     if (!mapRef.current) return;
     const markers = renderPOIs(pois, mapRef.current);
@@ -68,7 +69,10 @@ function InnerMapComponent() {
         }}
       />
 
-      {/* Drawing tools (active only when drawing) */}
+      {/* 🔁 Always render saved buildings (from localStorage) */}
+      {mapRef.current && <SavedBuildingsRenderer map={mapRef.current} />}
+
+      {/* Drawing tools (only when in drawing mode) */}
       {mapRef.current && isDrawing && (
         <>
           <DrawingHandler map={mapRef.current} />
@@ -76,7 +80,7 @@ function InnerMapComponent() {
         </>
       )}
 
-      {/* Top-right button stack */}
+      {/* UI buttons */}
       {mapRef.current && isDrawing ? (
         // Buttons shown while drawing
         <div
@@ -108,7 +112,7 @@ function InnerMapComponent() {
           </button>
         </div>
       ) : (
-        // Buttons shown when NOT drawing
+        // Buttons shown when not drawing
         <div
           style={{
             position: 'absolute',
@@ -138,7 +142,7 @@ function InnerMapComponent() {
         </div>
       )}
 
-      {/* Error message display */}
+      {/* Location error display */}
       {error && (
         <div
           style={{
