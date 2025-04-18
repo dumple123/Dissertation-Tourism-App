@@ -25,8 +25,9 @@ function InnerMapComponent() {
 
   const { coords, error } = useUserLocation();
   const { pois, addPOI } = usePOIs();
-  const { isDrawing } = useDrawingContext();
+  const { isDrawing, completeRing } = useDrawingContext();
 
+  // Initialize the map
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container || !coords) return;
@@ -48,6 +49,7 @@ function InnerMapComponent() {
     return () => map.remove();
   }, [coords]);
 
+  // Add POI markers when map or POIs change
   useEffect(() => {
     if (!mapRef.current) return;
     const markers = renderPOIs(pois, mapRef.current);
@@ -56,6 +58,7 @@ function InnerMapComponent() {
 
   return (
     <>
+      {/* Map container */}
       <div
         ref={mapContainerRef}
         style={{
@@ -65,26 +68,47 @@ function InnerMapComponent() {
         }}
       />
 
-      {/* Drawing tools */}
+      {/* Drawing tools (active only when drawing) */}
       {mapRef.current && isDrawing && (
         <>
           <DrawingHandler map={mapRef.current} />
           <PolygonRenderer map={mapRef.current} />
-          <div
-            style={{
-              position: 'absolute',
-              top: 20,
-              right: 20,
-              zIndex: 10,
-            }}
-          >
-            <SaveButton />
-          </div>
         </>
       )}
 
       {/* Top-right button stack */}
-      {!isDrawing && (
+      {mapRef.current && isDrawing ? (
+        // Buttons shown while drawing
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            zIndex: 10,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            alignItems: 'flex-end',
+          }}
+        >
+          <SaveButton />
+          <button
+            onClick={() => completeRing()}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#F4A261',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            + Add Hole
+          </button>
+        </div>
+      ) : (
+        // Buttons shown when NOT drawing
         <div
           style={{
             position: 'absolute',
@@ -114,7 +138,7 @@ function InnerMapComponent() {
         </div>
       )}
 
-      {/* Error message */}
+      {/* Error message display */}
       {error && (
         <div
           style={{
