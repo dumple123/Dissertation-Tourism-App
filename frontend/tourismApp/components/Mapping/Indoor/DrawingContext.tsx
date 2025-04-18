@@ -2,11 +2,12 @@ import React, { createContext, useState, useContext } from 'react';
 
 // Define the shape of our drawing context
 type DrawingContextType = {
-  points: [number, number][];
+  rings: [number, number][][]; // Each ring is an array of coordinates
   isDrawing: boolean;
   buildingName: string | null;
   startDrawing: (name: string) => void;
   addPoint: (pt: [number, number]) => void;
+  completeRing: () => void;
   completeShape: () => void;
   resetDrawing: () => void;
 };
@@ -16,24 +17,48 @@ const DrawingContext = createContext<DrawingContextType | null>(null);
 
 // This provider wraps your app or map component and gives access to drawing logic
 export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [points, setPoints] = useState<[number, number][]>([]);
+  const [rings, setRings] = useState<[number, number][][]>([[]]); // [outer ring, inner ring1, inner ring2, ...]
   const [isDrawing, setIsDrawing] = useState(false);
   const [buildingName, setBuildingName] = useState<string | null>(null);
 
-  const addPoint = (pt: [number, number]) => setPoints((prev) => [...prev, pt]);
-  const completeShape = () => setIsDrawing(false);
-  const resetDrawing = () => {
-    setPoints([]);
-    setIsDrawing(true);
+  const addPoint = (pt: [number, number]) =>
+    setRings((prev) => {
+      const updated = [...prev];
+      updated[updated.length - 1] = [...updated[updated.length - 1], pt];
+      return updated;
+    });
+
+  const completeRing = () => {
+    setRings((prev) => [...prev, []]); // start new ring
   };
+
+  const completeShape = () => setIsDrawing(false);
+
+  const resetDrawing = () => {
+    setRings([[]]);
+    setIsDrawing(true);
+    setBuildingName(null);
+  };
+
   const startDrawing = (name: string) => {
-    setPoints([]);
+    setRings([[]]);
     setBuildingName(name);
     setIsDrawing(true);
   };
 
   return (
-    <DrawingContext.Provider value={{ points, isDrawing, buildingName, addPoint, completeShape, resetDrawing, startDrawing }}>
+    <DrawingContext.Provider
+      value={{
+        rings,
+        isDrawing,
+        buildingName,
+        startDrawing,
+        addPoint,
+        completeRing,
+        completeShape,
+        resetDrawing,
+      }}
+    >
       {children}
     </DrawingContext.Provider>
   );

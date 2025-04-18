@@ -1,16 +1,16 @@
 import { useDrawingContext } from './useDrawing';
 
 export default function SaveButton() {
-  const { points, buildingName } = useDrawingContext();
+  const { rings, buildingName } = useDrawingContext();
 
   const handleSave = () => {
-    if (points.length < 3) return;
+    if (!rings || rings.length === 0 || rings[0].length < 3) return;
 
     const geojson = {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: [[...points, points[0]]],
+        coordinates: rings.map((ring) => [...ring, ring[0]]), // Close each ring
       },
       properties: {
         name: buildingName,
@@ -22,7 +22,7 @@ export default function SaveButton() {
 
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'building-outline.geojson';
+    a.download = `${buildingName || 'building'}-outline.geojson`;
     a.click();
   };
 

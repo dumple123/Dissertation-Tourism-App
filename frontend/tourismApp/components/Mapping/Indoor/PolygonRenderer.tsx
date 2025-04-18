@@ -4,16 +4,16 @@ import { useDrawingContext } from './useDrawing';
 import type { Feature, Polygon } from 'geojson';
 
 export default function PolygonRenderer({ map }: { map: mapboxgl.Map }) {
-  const { points } = useDrawingContext();
+  const { rings } = useDrawingContext();
 
   useEffect(() => {
-    if (!map || points.length < 3) return;
+    if (!map || rings.length === 0 || rings[0].length < 3) return;
 
     const polygon: Feature<Polygon> = {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: [[...points, points[0]]],
+        coordinates: rings.map((ring) => [...ring, ring[0]]), // close each ring
       },
       properties: {},
     };
@@ -53,7 +53,7 @@ export default function PolygonRenderer({ map }: { map: mapboxgl.Map }) {
       if (map.getLayer('building-outline-border')) map.removeLayer('building-outline-border');
       if (map.getSource('building-outline')) map.removeSource('building-outline');
     };
-  }, [map, points]);
+  }, [map, rings]);
 
   return null;
 }
