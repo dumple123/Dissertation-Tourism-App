@@ -1,9 +1,10 @@
 import { useDrawingContext } from './useDrawing';
+import { getTokens } from '~/utils/tokenUtils';
 
-export default function SaveButton() {
+export default function SaveButton({ mapId }: { mapId: string }) {
   const { rings, buildingName, completeShape } = useDrawingContext();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!rings || rings.length === 0 || rings[0].length < 3) return;
 
     const geojson = {
@@ -17,15 +18,34 @@ export default function SaveButton() {
       },
     };
 
-    // Save to localStorage
-    const existing = localStorage.getItem('savedBuildings');
-    const parsed = existing ? JSON.parse(existing) : [];
+    try {
+      const { accessToken } = await getTokens();
+      if (!accessToken) throw new Error("No access token");
 
-    parsed.push(geojson);
+      const response = await fetch('http://localhost:3000/api/buildings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          name: buildingName,
+          mapId,
+          numFloors: 1, // Defaulting to 1 floor; adjust if needed
+          geojson,
+        }),
+      });
 
-    localStorage.setItem('savedBuildings', JSON.stringify(parsed));
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(error || 'Failed to save building');
+      }
 
-    alert(`Saved "${buildingName}" locally!`);
+      alert(`Saved "${buildingName}" to backend!`);
+    } catch (err) {
+      console.error('Failed to save building:', err);
+      alert('Failed to save building');
+    }
 
     // 🔒 Lock editing
     completeShape();
