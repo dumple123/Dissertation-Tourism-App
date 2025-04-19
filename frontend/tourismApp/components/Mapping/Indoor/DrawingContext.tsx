@@ -12,6 +12,7 @@ type DrawingContextType = {
   resetDrawing: () => void;
   updatePoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
   insertPoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
+  setRings: (newRings: [number, number][][]) => void;
 };
 
 // Create the context object
@@ -19,43 +20,43 @@ const DrawingContext = createContext<DrawingContextType | null>(null);
 
 // This provider wraps your app or map component and gives access to drawing logic
 export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [rings, setRings] = useState<[number, number][][]>([[]]); // [outer ring, inner ring1, inner ring2, ...]
+  const [ringsState, setRingsState] = useState<[number, number][][]>([[]]); // renamed to avoid shadowing
   const [isDrawing, setIsDrawing] = useState(false);
   const [buildingName, setBuildingName] = useState<string | null>(null);
 
-  // Add a new point to the current ring
+  // Function to set rings directly (used when editing a building)
+  const setRings = (newRings: [number, number][][]) => {
+    setRingsState(newRings);
+    setIsDrawing(true);
+  };
+
   const addPoint = (pt: [number, number]) =>
-    setRings((prev) => {
+    setRingsState((prev) => {
       const updated = [...prev];
       updated[updated.length - 1] = [...updated[updated.length - 1], pt];
       return updated;
     });
 
-  // Complete the current ring and start a new one
   const completeRing = () => {
-    setRings((prev) => [...prev, []]);
+    setRingsState((prev) => [...prev, []]);
   };
 
-  // Finish the drawing (stops interaction)
   const completeShape = () => setIsDrawing(false);
 
-  // Clear all drawing data
   const resetDrawing = () => {
-    setRings([[]]);
+    setRingsState([[]]);
     setIsDrawing(true);
     setBuildingName(null);
   };
 
-  // Begin a new shape with a given name
   const startDrawing = (name: string) => {
-    setRings([[]]);
+    setRingsState([[]]);
     setBuildingName(name);
     setIsDrawing(true);
   };
 
-  // Move an existing vertex (default is outer ring)
   const updatePoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
-    setRings((prev) => {
+    setRingsState((prev) => {
       const updated = [...prev];
       const ring = [...updated[ringIndex]];
       ring[index] = newPoint;
@@ -63,9 +64,8 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return updated;
     });
 
-  // Insert a new vertex between points (default is outer ring)
   const insertPoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
-    setRings((prev) => {
+    setRingsState((prev) => {
       const updated = [...prev];
       const ring = [...updated[ringIndex]];
       ring.splice(index, 0, newPoint);
@@ -76,7 +76,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <DrawingContext.Provider
       value={{
-        rings,
+        rings: ringsState,
         isDrawing,
         buildingName,
         startDrawing,
@@ -86,12 +86,14 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         resetDrawing,
         updatePoint,
         insertPoint,
+        setRings, // now correctly included
       }}
     >
       {children}
     </DrawingContext.Provider>
   );
 };
+
 
 // Hook to use the drawing context
 export const useDrawingContext = () => {

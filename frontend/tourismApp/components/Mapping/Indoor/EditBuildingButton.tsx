@@ -2,7 +2,7 @@ import { useDrawingContext } from './useDrawing';
 import { getTokens } from '~/utils/tokenUtils';
 
 export default function EditBuildingButton({ buildingId }: { buildingId: string }) {
-  const { startDrawing } = useDrawingContext();
+  const { startDrawing, setRings } = useDrawingContext();
 
   const handleClick = async () => {
     try {
@@ -17,10 +17,15 @@ export default function EditBuildingButton({ buildingId }: { buildingId: string 
       const name = building.name;
       const coordinates = building.geojson.geometry.coordinates;
 
+      // Start drawing and load building geometry
       startDrawing(name);
-      // Replace current rings with building's coordinates (needs extra context logic)
-      // Set in context or adjust DrawingContext to support preloading geometry
 
+      // Remove the closing coordinate from each ring
+      const transformed = coordinates.map(
+        (ring: [number, number][]) => ring.slice(0, -1)
+      );
+
+      setRings(transformed);
     } catch (err) {
       console.error('Error loading building for edit:', err);
     }
