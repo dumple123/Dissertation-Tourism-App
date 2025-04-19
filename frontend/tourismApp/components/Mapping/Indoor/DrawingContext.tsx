@@ -10,6 +10,8 @@ type DrawingContextType = {
   completeRing: () => void;
   completeShape: () => void;
   resetDrawing: () => void;
+  updatePoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
+  insertPoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
 };
 
 // Create the context object
@@ -21,6 +23,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isDrawing, setIsDrawing] = useState(false);
   const [buildingName, setBuildingName] = useState<string | null>(null);
 
+  // Add a new point to the current ring
   const addPoint = (pt: [number, number]) =>
     setRings((prev) => {
       const updated = [...prev];
@@ -28,23 +31,47 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return updated;
     });
 
+  // Complete the current ring and start a new one
   const completeRing = () => {
-    setRings((prev) => [...prev, []]); // start new ring
+    setRings((prev) => [...prev, []]);
   };
 
+  // Finish the drawing (stops interaction)
   const completeShape = () => setIsDrawing(false);
 
+  // Clear all drawing data
   const resetDrawing = () => {
     setRings([[]]);
     setIsDrawing(true);
     setBuildingName(null);
   };
 
+  // Begin a new shape with a given name
   const startDrawing = (name: string) => {
     setRings([[]]);
     setBuildingName(name);
     setIsDrawing(true);
   };
+
+  // Move an existing vertex (default is outer ring)
+  const updatePoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
+    setRings((prev) => {
+      const updated = [...prev];
+      const ring = [...updated[ringIndex]];
+      ring[index] = newPoint;
+      updated[ringIndex] = ring;
+      return updated;
+    });
+
+  // Insert a new vertex between points (default is outer ring)
+  const insertPoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
+    setRings((prev) => {
+      const updated = [...prev];
+      const ring = [...updated[ringIndex]];
+      ring.splice(index, 0, newPoint);
+      updated[ringIndex] = ring;
+      return updated;
+    });
 
   return (
     <DrawingContext.Provider
@@ -57,6 +84,8 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         completeRing,
         completeShape,
         resetDrawing,
+        updatePoint,
+        insertPoint,
       }}
     >
       {children}

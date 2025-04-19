@@ -32,10 +32,6 @@ function InnerMapComponent() {
 
   const [selectedMap, setSelectedMap] = useState<{ id: string; name: string } | null>(null); // Currently selected map
 
-  // Log useful info for debugging
-  console.log('User coords:', coords);
-  console.log('Location error:', error);
-
   // Initialize the map once coordinates are available
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -50,10 +46,47 @@ function InnerMapComponent() {
 
     mapRef.current = map;
 
-    // Add user location puck when the map loads
+    // Add source and layers for drawing polygons after map is loaded
     map.on('load', () => {
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
+
+      // Create the polygon source if it doesn't already exist
+      if (!map.getSource('drawing-polygon')) {
+        map.addSource('drawing-polygon', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: [[]], // Start with empty ring
+            },
+            properties: {},
+          },
+        });
+
+        // Fill layer for polygon
+        map.addLayer({
+          id: 'drawing-polygon-fill',
+          type: 'fill',
+          source: 'drawing-polygon',
+          paint: {
+            'fill-color': '#2A9D8F',
+            'fill-opacity': 0.3,
+          },
+        });
+
+        // Outline layer for polygon
+        map.addLayer({
+          id: 'drawing-polygon-outline',
+          type: 'line',
+          source: 'drawing-polygon',
+          paint: {
+            'line-color': '#264653',
+            'line-width': 2,
+          },
+        });
+      }
     });
 
     return () => map.remove();

@@ -1,99 +1,124 @@
-import { useEffect } from 'react';
-import mapboxgl from 'mapbox-gl';
+import { useEffect, useRef } from 'react';
+import mapboxgl, { Marker } from 'mapbox-gl';
 import { useDrawingContext } from './useDrawing';
-import type { Feature, Polygon, Point, FeatureCollection } from 'geojson';
+import type { Feature, Polygon as GeoJsonPolygon } from 'geojson';
 
-export default function PolygonRenderer({ map }: { map: mapboxgl.Map }) {
-  const { rings } = useDrawingContext();
+interface Props {
+  map: mapboxgl.Map;
+}
 
+// Renders and manages interactive polygon editing using native Mapbox markers
+export default function PolygonRenderer({ map }: Props) {
+  const { rings, updatePoint, insertPoint } = useDrawingContext();
+  const outerRing = rings[0] || [];
+
+  // References to all markers for cleanup
+  const vertexMarkersRef = useRef<Marker[]>([]);
+  const midpointMarkersRef = useRef<Marker[]>([]);
+
+  // Initial polygon fill update (triggered by React state change)
   useEffect(() => {
-    if (!map || rings.length === 0 || rings[0].length < 1) return;
+    if (!map.getSource('drawing-polygon') || outerRing.length < 3) return;
 
-    // Create polygon feature from current rings
-    const polygon: Feature<Polygon> = {
+    const geojson: Feature<GeoJsonPolygon> = {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: rings.map((ring) => [...ring, ring[0]]),
+        coordinates: [outerRing],
       },
       properties: {},
     };
 
-    // Create point features for each vertex
-    const vertexFeatures: Feature<Point>[] = rings.flatMap((ring) =>
-      ring.map((pt) => ({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: pt },
-        properties: {},
-      }))
-    );
+    (map.getSource('drawing-polygon') as mapboxgl.GeoJSONSource).setData(geojson);
+  }, [outerRing, map]);
 
-    const vertexCollection: FeatureCollection = {
-      type: 'FeatureCollection',
-      features: vertexFeatures,
-    };
+  // Create draggable vertex markers and clickable midpoints
+  useEffect(() => {
+    // Clean up all previous markers
+    vertexMarkersRef.current.forEach(marker => marker.remove());
+    midpointMarkersRef.current.forEach(marker => marker.remove());
+    vertexMarkersRef.current = [];
+    midpointMarkersRef.current = [];
 
-    // Add or update polygon source/layers
-    if (map.getSource('building-outline')) {
-      (map.getSource('building-outline') as mapboxgl.GeoJSONSource).setData(polygon);
-    } else {
-      map.addSource('building-outline', {
-        type: 'geojson',
-        data: polygon,
+    // Add vertex markers
+    outerRing.forEach(([lng, lat], index) => {
+      const markerEl = document.createElement('div');
+      markerEl.style.width = '10px';
+      markerEl.style.height = '10px';
+      markerEl.style.borderRadius = '50%';
+      markerEl.style.backgroundColor = 'blue';
+      markerEl.style.border = '2px solid white';
+      markerEl.style.cursor = 'move';
+
+      const marker = new mapboxgl.Marker({
+        element: markerEl,
+        draggable: true,
+      })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      // Smoothly update the polygon fill on drag (without state change)
+      marker.on('drag', () => {
+        const draggedPosition = marker.getLngLat();
+        const tempRing = [...outerRing];
+        tempRing[index] = [draggedPosition.lng, draggedPosition.lat];
+
+        const geojson: Feature<GeoJsonPolygon> = {
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [tempRing],
+          },
+          properties: {},
+        };
+
+        (map.getSource('drawing-polygon') as mapboxgl.GeoJSONSource).setData(geojson);
       });
 
-      map.addLayer({
-        id: 'building-outline-fill',
-        type: 'fill',
-        source: 'building-outline',
-        paint: {
-          'fill-color': '#2A9D8F',
-          'fill-opacity': 0.3,
-        },
+      // Commit the final position to state when dragging ends
+      marker.on('dragend', () => {
+        const { lng, lat } = marker.getLngLat();
+        updatePoint(index, [lng, lat]);
       });
 
-      map.addLayer({
-        id: 'building-outline-border',
-        type: 'line',
-        source: 'building-outline',
-        paint: {
-          'line-color': '#264653',
-          'line-width': 2,
-        },
-      });
-    }
+      vertexMarkersRef.current.push(marker);
+    });
 
-    // Add or update vertex source/layer
-    if (map.getSource('vertex-points')) {
-      (map.getSource('vertex-points') as mapboxgl.GeoJSONSource).setData(vertexCollection);
-    } else {
-      map.addSource('vertex-points', {
-        type: 'geojson',
-        data: vertexCollection,
-      });
+    // Add midpoint markers between each pair of vertices
+    outerRing.forEach((point, index) => {
+      const next = outerRing[(index + 1) % outerRing.length];
+      const mid: [number, number] = [
+        (point[0] + next[0]) / 2,
+        (point[1] + next[1]) / 2,
+      ];
 
-      map.addLayer({
-        id: 'vertex-points-layer',
-        type: 'circle',
-        source: 'vertex-points',
-        paint: {
-          'circle-radius': 5,
-          'circle-color': '#F4A261',
-          'circle-stroke-color': '#264653',
-          'circle-stroke-width': 1,
-        },
-      });
-    }
+      const midEl = document.createElement('div');
+      midEl.style.width = '6px';
+      midEl.style.height = '6px';
+      midEl.style.borderRadius = '50%';
+      midEl.style.backgroundColor = 'gray';
+      midEl.style.opacity = '0.6';
+      midEl.style.border = '1px solid white';
+      midEl.style.cursor = 'pointer';
 
+      // Insert a new vertex into the polygon at midpoint
+      midEl.onclick = () => insertPoint(index + 1, mid);
+
+      const midpointMarker = new mapboxgl.Marker({ element: midEl })
+        .setLngLat(mid)
+        .addTo(map);
+
+      midpointMarkersRef.current.push(midpointMarker);
+    });
+
+    // Cleanup markers on polygon change or unmount
     return () => {
-      if (map.getLayer('building-outline-fill')) map.removeLayer('building-outline-fill');
-      if (map.getLayer('building-outline-border')) map.removeLayer('building-outline-border');
-      if (map.getSource('building-outline')) map.removeSource('building-outline');
-
-      if (map.getLayer('vertex-points-layer')) map.removeLayer('vertex-points-layer');
-      if (map.getSource('vertex-points')) map.removeSource('vertex-points');
+      vertexMarkersRef.current.forEach(marker => marker.remove());
+      midpointMarkersRef.current.forEach(marker => marker.remove());
+      vertexMarkersRef.current = [];
+      midpointMarkersRef.current = [];
     };
-  }, [map, rings]);
+  }, [outerRing, map, updatePoint, insertPoint]);
 
   return null;
 }
