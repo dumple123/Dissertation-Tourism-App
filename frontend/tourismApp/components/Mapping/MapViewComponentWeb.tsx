@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
+
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
 import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
+
 import {
   DrawingProvider,
   DrawingHandler,
@@ -17,13 +19,15 @@ import { useDrawingContext } from '~/components/Mapping/Indoor/useDrawing';
 import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButton';
 import SavedBuildingsRenderer from '~/components/Mapping/Indoor/SavedBuildingsRenderer';
 import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
+import BuildingSidebar from '~/components/Mapping/Indoor/BuildingSidebar';
 
 // Set the Mapbox access token from Expo config
+type MapRef = mapboxgl.Map;
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
 function InnerMapComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<MapRef | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
 
   const { coords, error } = useUserLocation();
@@ -31,8 +35,9 @@ function InnerMapComponent() {
   const { isDrawing, completeRing } = useDrawingContext();
 
   const [selectedMap, setSelectedMap] = useState<{ id: string; name: string } | null>(null);
-  const [selectedBuilding, setSelectedBuilding] = useState<{ name: string } | null>(null); // Tracks clicked building
+  const [selectedBuilding, setSelectedBuilding] = useState<{ name: string } | null>(null);
 
+  // Initialize the map once user coordinates are available
   useEffect(() => {
     const container = mapContainerRef.current;
     if (!container || !coords) return;
@@ -47,18 +52,17 @@ function InnerMapComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
+      // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
 
+      // Add drawing polygon source and layers if not already present
       if (!map.getSource('drawing-polygon')) {
         map.addSource('drawing-polygon', {
           type: 'geojson',
           data: {
             type: 'Feature',
-            geometry: {
-              type: 'Polygon',
-              coordinates: [[]],
-            },
+            geometry: { type: 'Polygon', coordinates: [[]] },
             properties: {},
           },
         });
@@ -84,7 +88,7 @@ function InnerMapComponent() {
         });
       }
 
-      // Show metadata when a building is clicked
+      // Show building metadata on click
       map.on('click', 'saved-buildings-fill', (e) => {
         const feature = e.features?.[0];
         const name = feature?.properties?.name;
@@ -94,7 +98,7 @@ function InnerMapComponent() {
         }
       });
 
-      // Clear metadata if clicking anywhere else
+      // Clear metadata when clicking elsewhere
       map.on('click', (e) => {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ['saved-buildings-fill'],
@@ -109,12 +113,14 @@ function InnerMapComponent() {
     return () => map.remove();
   }, [coords]);
 
+  // Render POIs each time they update
   useEffect(() => {
     if (!mapRef.current) return;
     const markers = renderPOIs(pois, mapRef.current);
     return () => markers.forEach((m) => m.remove());
   }, [pois]);
 
+  // Show loading indicator if location is still being fetched
   if (!coords && !error) {
     return (
       <div
@@ -134,8 +140,10 @@ function InnerMapComponent() {
 
   return (
     <>
+      {/* Map selection dropdown */}
       <SelectMapDropdown onSelectMap={setSelectedMap} />
 
+      {/* Map container */}
       <div
         ref={mapContainerRef}
         style={{
@@ -146,31 +154,15 @@ function InnerMapComponent() {
         }}
       />
 
-      {/* Metadata sidebar for selected building */}
-      {selectedBuilding && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 80,
-            left: 20,
-            backgroundColor: '#ffffff',
-            padding: '12px 16px',
-            borderRadius: '8px',
-            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.1)',
-            zIndex: 11,
-            minWidth: 200,
-          }}
-        >
-          <h3 style={{ margin: 0, marginBottom: 8, fontSize: 16 }}>
-            {selectedBuilding.name}
-          </h3>
-        </div>
-      )}
+      {/* Building metadata sidebar */}
+      {selectedBuilding && <BuildingSidebar name={selectedBuilding.name} />}
 
+      {/* Render saved buildings if a map is selected */}
       {mapRef.current && selectedMap && (
         <SavedBuildingsRenderer map={mapRef.current} mapId={selectedMap.id} />
       )}
 
+      {/* Drawing and interaction controls */}
       {selectedMap && (
         <>
           {mapRef.current && isDrawing && (
@@ -232,6 +224,7 @@ function InnerMapComponent() {
         </>
       )}
 
+      {/* Display location error if one exists */}
       {error && (
         <div
           style={{
@@ -253,8 +246,7 @@ function InnerMapComponent() {
   );
 }
 
-
-// Wrap the entire map in DrawingProvider context
+// Wrap map component with drawing context
 export default function MapViewComponent() {
   return (
     <DrawingProvider>
