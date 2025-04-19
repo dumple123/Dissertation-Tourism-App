@@ -36,7 +36,15 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
 
         // Convert to FeatureCollection by extracting each building's GeoJSON
         const features = rawBuildings
-          .map((b: any) => b.geojson)
+          .map((b: any) => ({
+            ...b.geojson,
+            // Add building ID and name to each feature's properties so they can be accessed on click
+            properties: {
+              ...b.geojson.properties,
+              id: b.id,           // Added: include building ID for sidebar actions
+              name: b.name,       // Added: ensure building name is present
+            },
+          }))
           .filter((f: any) => f && f.type === 'Feature');
 
         const buildings: FeatureCollection = {

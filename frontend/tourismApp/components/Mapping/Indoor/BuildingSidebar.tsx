@@ -1,10 +1,14 @@
 import React from 'react';
+import EditBuildingButton from './EditBuildingButton';
+import DeleteBuildingButton from './DeleteBuildingButton';
 
 interface BuildingSidebarProps {
   name: string;
+  id: string;
+  onDeleteSuccess: () => void;
 }
 
-const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name }) => {
+const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name, id, onDeleteSuccess }) => {
   return (
     <div
       style={{
@@ -20,6 +24,10 @@ const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name }) => {
       }}
     >
       <h3 style={{ margin: 0, marginBottom: 8, fontSize: 16 }}>{name}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <EditBuildingButton buildingId={id} />
+        <DeleteBuildingButton buildingId={id} onDeleteSuccess={onDeleteSuccess} />
+      </div>
     </div>
   );
 };

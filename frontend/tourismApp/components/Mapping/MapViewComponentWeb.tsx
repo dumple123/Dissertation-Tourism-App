@@ -20,6 +20,8 @@ import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButt
 import SavedBuildingsRenderer from '~/components/Mapping/Indoor/SavedBuildingsRenderer';
 import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
 import BuildingSidebar from '~/components/Mapping/Indoor/BuildingSidebar';
+import EditBuildingButton from '~/components/Mapping/Indoor/EditBuildingButton';
+import DeleteBuildingButton from '~/components/Mapping/Indoor/DeleteBuildingButton';
 
 // Set the Mapbox access token from Expo config
 type MapRef = mapboxgl.Map;
@@ -35,7 +37,8 @@ function InnerMapComponent() {
   const { isDrawing, completeRing } = useDrawingContext();
 
   const [selectedMap, setSelectedMap] = useState<{ id: string; name: string } | null>(null);
-  const [selectedBuilding, setSelectedBuilding] = useState<{ name: string } | null>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<{ name: string; id: string } | null>(null);
+  const [buildingRefreshKey, setBuildingRefreshKey] = useState(0); // Triggers map refresh when a building is deleted
 
   // Initialize the map once user coordinates are available
   useEffect(() => {
@@ -92,9 +95,10 @@ function InnerMapComponent() {
       map.on('click', 'saved-buildings-fill', (e) => {
         const feature = e.features?.[0];
         const name = feature?.properties?.name;
+        const id = feature?.properties?.id;
 
-        if (!isDrawing && name) {
-          setSelectedBuilding({ name });
+        if (!isDrawing && name && id) {
+          setSelectedBuilding({ name, id });
         }
       });
 
@@ -155,11 +159,24 @@ function InnerMapComponent() {
       />
 
       {/* Building metadata sidebar */}
-      {selectedBuilding && <BuildingSidebar name={selectedBuilding.name} />}
+      {selectedBuilding && (
+        <BuildingSidebar
+          name={selectedBuilding.name}
+          id={selectedBuilding.id}
+          onDeleteSuccess={() => {
+            setSelectedBuilding(null); // Close the sidebar on delete
+            setBuildingRefreshKey((prev) => prev + 1); // Trigger SavedBuildingsRenderer reload
+          }}
+        />
+      )}
 
       {/* Render saved buildings if a map is selected */}
       {mapRef.current && selectedMap && (
-        <SavedBuildingsRenderer map={mapRef.current} mapId={selectedMap.id} />
+        <SavedBuildingsRenderer
+          key={buildingRefreshKey} // Key forces re-render when incremented
+          map={mapRef.current}
+          mapId={selectedMap.id}
+        />
       )}
 
       {/* Drawing and interaction controls */}
