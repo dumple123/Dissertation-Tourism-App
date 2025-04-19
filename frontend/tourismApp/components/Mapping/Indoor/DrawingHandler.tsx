@@ -39,6 +39,9 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
       });
     }
 
+    // Hide the default hand cursor during drawing mode
+    map.getCanvas().style.cursor = 'none';
+
     // Update the cursor preview as the user moves the mouse
     mouseMoveHandler = (e) => {
       let pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
@@ -121,6 +124,9 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
 
       if (map.getLayer('cursor-point-layer')) map.removeLayer('cursor-point-layer');
       if (map.getSource('cursor-point')) map.removeSource('cursor-point');
+
+      // Restore default cursor
+      map.getCanvas().style.cursor = '';
     };
   }, [map, rings, isDrawing, addPoint, completeRing, completeShape]);
 
