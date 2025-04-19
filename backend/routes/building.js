@@ -24,7 +24,7 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// Get buildings for a specific map
+// Get all buildings for a specific map
 router.get("/map/:mapId", verifyToken, async (req, res) => {
   const { mapId } = req.params;
 
@@ -36,6 +36,75 @@ router.get("/map/:mapId", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Error fetching buildings:", err);
     res.status(500).json({ error: "Failed to fetch buildings" });
+  }
+});
+
+// Get a building by ID
+router.get("/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const building = await prisma.building.findUnique({
+      where: { id },
+    });
+
+    if (!building) {
+      return res.status(404).json({ error: "Building not found" });
+    }
+
+    res.json(building);
+  } catch (err) {
+    console.error("Error fetching building:", err);
+    res.status(500).json({ error: "Failed to fetch building" });
+  }
+});
+
+// Update a building by ID
+router.put("/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, mapId, numFloors, geojson } = req.body;
+
+  try {
+    const building = await prisma.building.update({
+      where: { id },
+      data: {
+        name,
+        mapId,
+        numFloors,
+        geojson,
+      },
+    });
+
+    res.json(building);
+  } catch (err) {
+    console.error("Error updating building:", err);
+
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Building not found" });
+    }
+
+    res.status(500).json({ error: "Failed to update building" });
+  }
+});
+
+// Delete a building by ID
+router.delete("/:id", verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await prisma.building.delete({
+      where: { id },
+    });
+
+    res.status(204).end(); // No content
+  } catch (err) {
+    console.error("Error deleting building:", err);
+
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: "Building not found" });
+    }
+
+    res.status(500).json({ error: "Failed to delete building" });
   }
 });
 
