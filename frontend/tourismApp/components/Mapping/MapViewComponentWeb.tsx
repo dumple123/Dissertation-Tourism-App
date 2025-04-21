@@ -21,49 +21,89 @@ import { useDrawingContext } from '~/components/Mapping/Indoor/Drawing/useDrawin
 import CreateBuildingButton from '~/components/Mapping/Indoor/Buildings/CreateBuildingButton';
 import CreateRoomButton from '~/components/Mapping/Indoor/Rooms/CreateRoomButton';
 import SavedBuildingsRenderer from '~/components/Mapping/Indoor/Buildings/SavedBuildingsRenderer';
+import SavedRoomsRenderer from './Indoor/Rooms/SavedRoomsRenderer';
 import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
 import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSidebar';
+import RoomSidebar from '~/components/Mapping/Indoor/Rooms/RoomSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 
-import { getBuildingById } from '~/api/building';
+import { getBuildingsForMap, getBuildingById } from '~/api/building';
+import { getRoomsForBuilding } from '~/api/room';
 import { useMapStyleReady } from '~/components/Mapping/useMapStyleReady';
-import SavedRoomsRenderer from './Indoor/Rooms/SavedRoomsRenderer';
 
-// Set the Mapbox access token from Expo config
-type MapRef = mapboxgl.Map;
+// Set Mapbox token
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
 function InnerMapComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<MapRef | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
 
   const { coords, error } = useUserLocation();
   const { pois, addPOI } = usePOIs();
   const { isDrawing, completeRing, roomInfo } = useDrawingContext();
+  const styleReady = useMapStyleReady(mapRef.current ?? undefined);
 
+  // Map and selection state
   const [selectedMap, setSelectedMap] = useState<{ id: string; name: string } | null>(null);
-  const [selectedBuilding, setSelectedBuilding] = useState<{
-    id: string;
-    name: string;
-    bottomFloor: number;
-    numFloors: number;
-  } | null>(null);
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [roomsByBuilding, setRoomsByBuilding] = useState<Record<string, any[]>>({});
+  const [selectedBuilding, setSelectedBuilding] = useState<any | null>(null);
+  const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
+  const [selectedFloor, setSelectedFloor] = useState<number>(0);
+  const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
 
-  const [availableFloors, setAvailableFloors] = useState<number[]>([]);
-  const [selectedFloor, setSelectedFloor] = useState<number>(0);
+  // Load all buildings and rooms for the selected map
+  useEffect(() => {
+    if (!selectedMap) return;
 
-  // Wait for the map style to be ready before interacting with layers
-  const styleReady = useMapStyleReady(mapRef.current ?? undefined);
+    const loadMapData = async () => {
+      try {
+        const loadedBuildings = await getBuildingsForMap(selectedMap.id);
+        setBuildings(loadedBuildings);
+
+        const roomsMap: Record<string, any[]> = {};
+        for (const building of loadedBuildings) {
+          const rooms = await getRoomsForBuilding(building.id);
+          roomsMap[building.id] = rooms;
+        }
+
+        setRoomsByBuilding(roomsMap);
+      } catch (err) {
+        console.error('Failed to load map data:', err);
+      }
+    };
+
+    loadMapData();
+  }, [selectedMap]);
+
+  // Filter rooms for current floor and selected building
+  const selectedRooms =
+    selectedBuilding && roomsByBuilding[selectedBuilding.id]
+      ? roomsByBuilding[selectedBuilding.id].filter((r) => r.floor === selectedFloor)
+      : [];
+
+  // Generate floor range from selected building
+  useEffect(() => {
+    if (!selectedBuilding) return;
+    const { bottomFloor, numFloors } = selectedBuilding;
+
+    if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
+      const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
+      setAvailableFloors(floors);
+      if (!floors.includes(selectedFloor)) {
+        setSelectedFloor(floors[0]);
+      }
+    }
+  }, [selectedBuilding]);
 
   // Initialize the map once coordinates are available
   useEffect(() => {
-    const container = mapContainerRef.current;
-    if (!container || !coords) return;
+    if (!mapContainerRef.current || !coords) return;
 
     const map = new mapboxgl.Map({
-      container,
+      container: mapContainerRef.current,
       style: 'mapbox://styles/mapbox/streets-v11',
       center: coords,
       zoom: 14,
@@ -72,39 +112,27 @@ function InnerMapComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
-      // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
 
-      // Add the drawing polygon source and layers for user-created buildings
       if (!map.getSource('drawing-polygon')) {
         map.addSource('drawing-polygon', {
           type: 'geojson',
-          data: {
-            type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [[]] },
-            properties: {},
-          },
+          data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[]] }, properties: {} },
         });
 
         map.addLayer({
           id: 'drawing-polygon-fill',
           type: 'fill',
           source: 'drawing-polygon',
-          paint: {
-            'fill-color': '#2A9D8F',
-            'fill-opacity': 0.3,
-          },
+          paint: { 'fill-color': '#2A9D8F', 'fill-opacity': 0.3 },
         });
 
         map.addLayer({
           id: 'drawing-polygon-outline',
           type: 'line',
           source: 'drawing-polygon',
-          paint: {
-            'line-color': '#264653',
-            'line-width': 2,
-          },
+          paint: { 'line-color': '#264653', 'line-width': 2 },
         });
       }
     });
@@ -112,90 +140,101 @@ function InnerMapComponent() {
     return () => map.remove();
   }, [coords]);
 
-  // Map click handler to select or deselect buildings
+  // Click handler to select rooms
   useEffect(() => {
+    if (!styleReady || !mapRef.current) return;
+  
     const map = mapRef.current;
-    if (!map || !styleReady) return;
-
-    const handleClick = async (e: mapboxgl.MapMouseEvent) => {
+  
+    const handleRoomClick = (e: mapboxgl.MapMouseEvent) => {
       if (isDrawing) return;
-
-      const features = map.queryRenderedFeatures(e.point, {
-        layers: ['saved-buildings-fill'],
-      });
-
+  
+      const features = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
+  
       if (features.length > 0) {
         const feature = features[0];
-        const id = feature?.properties?.id;
-
-        if (id) {
-          try {
-            const data = await getBuildingById(id);
-            setSelectedBuilding({
-              id: data.id,
-              name: data.name,
-              numFloors: data.numFloors,
-              bottomFloor: data.bottomFloor,
-            });
-          } catch (err) {
-            console.error('Failed to fetch building metadata:', err);
+        const props = feature?.properties;
+  
+        // Type-safe check to avoid TS18047
+        if (props && typeof props.id === 'string') {
+          const room = selectedRooms.find((r) => r.id === props.id);
+          if (room) {
+            setSelectedRoom(room);
+            return;
           }
         }
+      }
+  
+      // If no room feature found or not matched
+      setSelectedRoom(null);
+    };
+  
+    const waitForLayer = () => {
+      if (map.getLayer('saved-rooms-fill')) {
+        map.on('click', handleRoomClick);
       } else {
-        setSelectedBuilding(null);
+        map.once('sourcedata', waitForLayer);
       }
     };
-
-    map.on('click', handleClick);
-
-    // Cleanup should return void or a void-returning function
+  
+    waitForLayer();
+  
     return () => {
-      map.off('click', handleClick);
+      map.off('click', handleRoomClick);
     };
-  }, [styleReady, isDrawing]);
+  }, [styleReady, isDrawing, selectedRooms]);
 
-  // Render POIs when they update
+  // Click handler to select buildings
+  useEffect(() => {
+    if (!styleReady || !mapRef.current) return;
+  
+    const map = mapRef.current;
+  
+    const handleBuildingClick = (e: mapboxgl.MapMouseEvent) => {
+      if (isDrawing) return;
+  
+      // If a room was clicked, skip building selection
+      const roomHits = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
+      if (roomHits.length > 0) return;
+  
+      // Look for a building feature
+      const buildingHits = map.queryRenderedFeatures(e.point, { layers: ['saved-buildings-fill'] });
+      if (buildingHits.length > 0) {
+        const feature = buildingHits[0];
+        const props = feature?.properties;
+  
+        // Ensure props and id are safe to access
+        if (props && typeof props.id === 'string') {
+          const building = buildings.find((b) => b.id === props.id);
+          if (building) {
+            setSelectedBuilding(building);
+            return;
+          }
+        }
+      }
+  
+      // Deselect if no building hit
+      setSelectedBuilding(null);
+    };
+  
+    map.on('click', handleBuildingClick);
+  
+    return () => {
+      map.off('click', handleBuildingClick);
+    };
+  }, [styleReady, isDrawing, buildings]);  
+
+  // Render POIs
   useEffect(() => {
     if (!mapRef.current) return;
     const markers = renderPOIs(pois, mapRef.current);
     return () => markers.forEach((m) => m.remove());
   }, [pois]);
 
-  // Generate available floor numbers from selected building
-  useEffect(() => {
-    if (!selectedBuilding) return;
-
-    const { bottomFloor, numFloors } = selectedBuilding;
-
-    if (
-      typeof bottomFloor === 'number' &&
-      typeof numFloors === 'number' &&
-      numFloors > 0
-    ) {
-      const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
-      setAvailableFloors(floors);
-
-      if (!floors.includes(selectedFloor)) {
-        setSelectedFloor(floors[0]);
-      }
-    } else {
-      setAvailableFloors([]);
-    }
-  }, [selectedBuilding]);
-
-  // Show loading screen while waiting for location
+  // Show loading screen if location is not ready
   if (!coords && !error) {
     return (
-      <div
-        style={{
-          width: '100%',
-          height: '100vh',
-          backgroundColor: '#f0f0f0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
+      <div style={{ width: '100%', height: '100vh', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p>Loading map…</p>
       </div>
     );
@@ -203,25 +242,12 @@ function InnerMapComponent() {
 
   return (
     <>
-      {/* Map selection dropdown */}
       <SelectMapDropdown onSelectMap={setSelectedMap} />
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100vh', backgroundColor: '#e0e0e0', cursor: isDrawing ? 'crosshair' : 'grab' }} />
 
-      {/* Map container */}
-      <div
-        ref={mapContainerRef}
-        style={{
-          width: '100%',
-          height: '100vh',
-          backgroundColor: '#e0e0e0',
-          cursor: isDrawing ? 'crosshair' : 'grab',
-        }}
-      />
-
-      {/* Building metadata sidebar */}
       {selectedBuilding && (
         <BuildingSidebar
-          name={selectedBuilding.name}
-          id={selectedBuilding.id}
+          building={selectedBuilding}
           onDeleteSuccess={() => {
             setSelectedBuilding(null);
             setBuildingRefreshKey((prev) => prev + 1);
@@ -229,33 +255,28 @@ function InnerMapComponent() {
         />
       )}
 
-      {/* Floor selector (based on selected building metadata) */}
+      {selectedRoom && (
+        <RoomSidebar
+          room={selectedRoom}
+          onDeleteSuccess={() => {
+            setSelectedRoom(null);
+            setBuildingRefreshKey((prev) => prev + 1);
+          }}
+        />
+      )}
+
       {selectedBuilding && availableFloors.length > 0 && (
-        <FloorSelector
-          availableFloors={availableFloors}
-          selectedFloor={selectedFloor}
-          onSelect={setSelectedFloor}
-        />
+        <FloorSelector availableFloors={availableFloors} selectedFloor={selectedFloor} onSelect={setSelectedFloor} />
       )}
 
-      {/* Render saved buildings for the selected map */}
       {mapRef.current && selectedMap && (
-        <SavedBuildingsRenderer
-          key={buildingRefreshKey}
-          map={mapRef.current}
-          mapId={selectedMap.id}
-        />
+        <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />
       )}
 
-      /* Render saved rooms for the selected building and floor */
       {mapRef.current && selectedBuilding && (
-        <SavedRoomsRenderer
-          map={mapRef.current}
-          buildingId={selectedBuilding.id}
-          floor={selectedFloor}
-        />
+        <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />
       )}
-      {/* Drawing tools and controls */}
+
       {selectedMap && (
         <>
           {mapRef.current && isDrawing && (
@@ -265,61 +286,21 @@ function InnerMapComponent() {
             </>
           )}
 
-          <div
-            style={{
-              position: 'absolute',
-              top: 20,
-              right: 20,
-              zIndex: 10,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 8,
-              alignItems: 'flex-end',
-            }}
-          >
-            {/* Show correct save button based on context */}
+          <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
             {mapRef.current && isDrawing ? (
               <>
-                {roomInfo ? (
-                  <RoomSaveButton />
-                ) : (
-                  <BuildingSaveButton mapId={selectedMap.id} />
-                )}
-                <button
-                  onClick={() => completeRing()}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: '#F4A261',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
-                >
+                {roomInfo ? <RoomSaveButton /> : <BuildingSaveButton mapId={selectedMap.id} />}
+                <button onClick={completeRing} style={{ padding: '8px 12px', backgroundColor: '#F4A261', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', width: '100%' }}>
                   + Add Hole
                 </button>
               </>
             ) : (
               <>
-                <button
-                  onClick={() => createPOI(addPOI)}
-                  style={{
-                    padding: '8px 12px',
-                    backgroundColor: '#2A9D8F',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                  }}
-                >
+                <button onClick={() => createPOI(addPOI)} style={{ padding: '8px 12px', backgroundColor: '#2A9D8F', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
                   Add POI
                 </button>
                 {selectedBuilding ? (
-                  <CreateRoomButton
-                    buildingId={selectedBuilding.id}
-                    currentFloor={selectedFloor}
-                  />
+                  <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
                 ) : (
                   <CreateBuildingButton />
                 )}
@@ -329,21 +310,8 @@ function InnerMapComponent() {
         </>
       )}
 
-      {/* Display location error if present */}
       {error && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 20,
-            left: 20,
-            right: 20,
-            backgroundColor: '#fff3f3',
-            padding: 10,
-            borderRadius: 8,
-            color: '#cc0000',
-            textAlign: 'center',
-          }}
-        >
+        <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#fff3f3', padding: 10, borderRadius: 8, color: '#cc0000', textAlign: 'center' }}>
           Location error: {error}
         </div>
       )}
@@ -351,7 +319,6 @@ function InnerMapComponent() {
   );
 }
 
-// Wrap component in drawing context
 export default function MapViewComponent() {
   return (
     <DrawingProvider>

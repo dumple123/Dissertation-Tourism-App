@@ -13,6 +13,7 @@ export default function MapDropdown({ onSelectMap }: Props) {
   const [newMapName, setNewMapName] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Load available maps on mount
   useEffect(() => {
     const loadMaps = async () => {
       try {
@@ -32,24 +33,30 @@ export default function MapDropdown({ onSelectMap }: Props) {
     loadMaps();
   }, []);
 
+  // When user selects a map from the dropdown
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
     if (value === '__add__') {
+      // Show new map input UI
       setAddingNew(true);
     } else {
+      // Find selected map object
       const selected = maps.find((map) => map.id === value);
       if (selected) {
         setSelectedMapId(value);
-        onSelectMap(selected);
+        // Notify parent with selected map (this is what triggers preload in InnerMapComponent)
+        onSelectMap({ id: selected.id, name: selected.name });
       }
     }
   };
 
+  // When user confirms creation of a new map
   const handleAddMap = async () => {
     try {
       const newMap = await createMap(newMapName);
       setMaps((prev) => [...prev, newMap]);
       setSelectedMapId(newMap.id);
+      // Notify parent of the new map (same as handleSelect)
       onSelectMap(newMap);
       setAddingNew(false);
       setNewMapName('');

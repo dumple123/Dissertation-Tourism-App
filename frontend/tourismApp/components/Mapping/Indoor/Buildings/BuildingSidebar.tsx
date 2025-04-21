@@ -1,38 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import EditBuildingButton from './EditBuildingButton';
 import DeleteBuildingButton from './DeleteBuildingButton';
-import { getBuildingById, updateBuilding } from '~/api/building';
+import { updateBuilding } from '~/api/building';
 
 interface BuildingSidebarProps {
-  name: string;
-  id: string;
+  building: {
+    id: string;
+    name: string;
+    numFloors: number;
+    bottomFloor: number;
+    [key: string]: any;
+  };
   onDeleteSuccess: () => void;
 }
 
-const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name, id, onDeleteSuccess }) => {
-  const [buildingName, setBuildingName] = useState(name);
-  const [numFloors, setNumFloors] = useState<number>(1);
-  const [bottomFloor, setBottomFloor] = useState<number>(0);
+const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ building, onDeleteSuccess }) => {
+  const [buildingName, setBuildingName] = useState(building.name);
+  const [numFloors, setNumFloors] = useState<number>(building.numFloors ?? 1);
+  const [bottomFloor, setBottomFloor] = useState<number>(building.bottomFloor ?? 0);
 
+  // When the building changes (e.g., selecting a different one), update local state
   useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        const data = await getBuildingById(id);
-        if (data) {
-          setNumFloors(data.numFloors || 1);
-          setBottomFloor(data.bottomFloor ?? 0);
-        }
-      } catch (err) {
-        console.error('Failed to fetch building details:', err);
-      }
-    };
-
-    fetchDetails();
-  }, [id]);
+    setBuildingName(building.name);
+    setNumFloors(building.numFloors ?? 1);
+    setBottomFloor(building.bottomFloor ?? 0);
+  }, [building]);
 
   const handleUpdate = async () => {
     try {
-      await updateBuilding(id, {
+      await updateBuilding(building.id, {
         name: buildingName,
         numFloors,
         bottomFloor,
@@ -129,8 +125,8 @@ const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name, id, onDeleteSuc
       </button>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <EditBuildingButton buildingId={id} />
-        <DeleteBuildingButton buildingId={id} onDeleteSuccess={onDeleteSuccess} />
+        <EditBuildingButton buildingId={building.id} />
+        <DeleteBuildingButton buildingId={building.id} onDeleteSuccess={onDeleteSuccess} />
       </div>
     </div>
   );

@@ -1,62 +1,46 @@
 import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { FeatureCollection } from 'geojson';
-import { getBuildingsForMap } from '~/api/building';
 
 interface Props {
   map: mapboxgl.Map;
-  mapId: string;
+  buildings: any[]; // List of buildings passed from preload logic
 }
 
-export default function SavedBuildingsRenderer({ map, mapId }: Props) {
+export default function SavedBuildingsRenderer({ map, buildings }: Props) {
   useEffect(() => {
     let mounted = true;
 
-    const fetchBuildings = async () => {
-      try {
-        const rawBuildings = await getBuildingsForMap(mapId);
+    // Transform building GeoJSON into a FeatureCollection
+    const features = buildings
+      .map((b) => ({
+        ...b.geojson,
+        properties: {
+          ...b.geojson.properties,
+          id: b.id,
+          name: b.name,
+        },
+      }))
+      .filter((f) => f && f.type === 'Feature');
 
-        const features = rawBuildings
-          .map((b: any) => ({
-            ...b.geojson,
-            properties: {
-              ...b.geojson.properties,
-              id: b.id,
-              name: b.name,
-            },
-          }))
-          .filter((f: any) => f && f.type === 'Feature');
-
-        const buildings: FeatureCollection = {
-          type: 'FeatureCollection',
-          features,
-        };
-
-        if (!map || !mounted || buildings.features.length === 0) return;
-
-        const sourceId = 'saved-buildings';
-
-        if (!map.isStyleLoaded()) {
-          map.once('style.load', () => addLayers(map, buildings, sourceId));
-        } else {
-          addLayers(map, buildings, sourceId);
-        }
-      } catch (err) {
-        console.error('Error loading buildings from backend:', err);
-      }
+    const featureCollection: FeatureCollection = {
+      type: 'FeatureCollection',
+      features,
     };
 
-    const addLayers = (
-      map: mapboxgl.Map,
-      buildings: FeatureCollection,
-      sourceId: string
-    ) => {
+    if (!map || !mounted || features.length === 0) return;
+
+    const sourceId = 'saved-buildings';
+
+    const addLayers = () => {
       if (!map.getSource(sourceId)) {
+        // Add GeoJSON source for buildings
         map.addSource(sourceId, {
           type: 'geojson',
-          data: buildings,
+          data: featureCollection,
         });
 
+        // Add building fill layer (appears under rooms if present)
         map.addLayer({
           id: 'saved-buildings-fill',
           type: 'fill',
@@ -65,8 +49,11 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
             'fill-color': '#E76F51',
             'fill-opacity': 0.2,
           },
+          // If room layer exists, place this underneath
+          ...(map.getLayer('saved-rooms-fill') && { beforeId: 'saved-rooms-fill' }),
         });
 
+        // Add building outline layer
         map.addLayer({
           id: 'saved-buildings-outline',
           type: 'line',
@@ -76,35 +63,39 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
             'line-width': 2,
           },
         });
+      } else {
+        // Update data if the source already exists
+        const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+        source.setData(featureCollection);
       }
     };
 
-    fetchBuildings();
+    // Ensure layers are only added after the map style is loaded
+    if (!map.isStyleLoaded()) {
+      map.once('style.load', addLayers);
+    } else {
+      addLayers();
+    }
 
+    // Cleanup layers and source on unmount or prop change
     return () => {
       mounted = false;
 
-      // Safely clean up layers and source
       try {
-        if (map && typeof map.getLayer === 'function') {
-          if (map.getLayer('saved-buildings-fill')) {
-            map.removeLayer('saved-buildings-fill');
-          }
-          if (map.getLayer('saved-buildings-outline')) {
-            map.removeLayer('saved-buildings-outline');
-          }
+        if (map.getLayer('saved-buildings-fill')) {
+          map.removeLayer('saved-buildings-fill');
         }
-
-        if (map && typeof map.getSource === 'function') {
-          if (map.getSource('saved-buildings')) {
-            map.removeSource('saved-buildings');
-          }
+        if (map.getLayer('saved-buildings-outline')) {
+          map.removeLayer('saved-buildings-outline');
+        }
+        if (map.getSource(sourceId)) {
+          map.removeSource(sourceId);
         }
       } catch (err) {
         console.warn('Error cleaning up saved buildings layers:', err);
       }
     };
-  }, [map, mapId]);
+  }, [map, buildings]);
 
   return null;
 }

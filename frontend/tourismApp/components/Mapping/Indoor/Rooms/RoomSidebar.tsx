@@ -2,19 +2,22 @@ import React from 'react';
 import { deleteRoom } from '~/api/room';
 
 interface RoomSidebarProps {
-  id: string;
-  name: string;
-  floor: number;
+  room: {
+    id: string;
+    name: string;
+    floor: number;
+    [key: string]: any; // allows flexibility for extra room data
+  };
   onDeleteSuccess: () => void;
 }
 
-const RoomSidebar: React.FC<RoomSidebarProps> = ({ id, name, floor, onDeleteSuccess }) => {
+const RoomSidebar: React.FC<RoomSidebarProps> = ({ room, onDeleteSuccess }) => {
   const handleDelete = async () => {
     const confirmDelete = confirm('Are you sure you want to delete this room?');
     if (!confirmDelete) return;
 
     try {
-      await deleteRoom(id);
+      await deleteRoom(room.id);
       alert('Room deleted');
       onDeleteSuccess();
     } catch (err) {
@@ -27,22 +30,22 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({ id, name, floor, onDeleteSucc
     <div
       style={{
         position: 'absolute',
-        top: 80,
-        left: 300,
-        backgroundColor: '#ffffff',
+        top: 300,
+        left: 20,
+        backgroundColor: '#f9f9f9',
         padding: '16px',
         borderRadius: '10px',
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        zIndex: 11,
+        zIndex: 10,
         width: 240,
-        boxSizing: 'border-box',
+        border: '1px solid #ccc',
         fontFamily: 'Open Sans, sans-serif',
       }}
     >
       <h3 style={{ marginTop: 0, fontSize: 18, marginBottom: 16 }}>Room Details</h3>
 
-      <p><strong>Name:</strong> {name}</p>
-      <p><strong>Floor:</strong> {floor}</p>
+      <p><strong>Name:</strong> {room.name}</p>
+      <p><strong>Floor:</strong> {room.floor}</p>
 
       <button
         onClick={handleDelete}
