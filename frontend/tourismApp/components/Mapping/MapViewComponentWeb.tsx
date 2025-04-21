@@ -26,6 +26,7 @@ import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSideb
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 
 import { getBuildingById } from '~/api/building';
+import { useMapStyleReady } from '~/components/Mapping/useMapStyleReady';
 
 // Set the Mapbox access token from Expo config
 type MapRef = mapboxgl.Map;
@@ -52,6 +53,9 @@ function InnerMapComponent() {
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<number>(0);
 
+  // Wait for the map style to be ready before interacting with layers
+  const styleReady = useMapStyleReady(mapRef.current ?? undefined);
+
   // Initialize the map once coordinates are available
   useEffect(() => {
     const container = mapContainerRef.current;
@@ -70,40 +74,55 @@ function InnerMapComponent() {
       // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
-
-      // Map click handler to select or deselect buildings
-      map.on('click', async (e) => {
-        if (isDrawing) return;
-
-        const features = map.queryRenderedFeatures(e.point, {
-          layers: ['saved-buildings-fill'],
-        });
-
-        if (features.length > 0) {
-          const feature = features[0];
-          const id = feature?.properties?.id;
-
-          if (id) {
-            try {
-              const data = await getBuildingById(id);
-              setSelectedBuilding({
-                id: data.id,
-                name: data.name,
-                numFloors: data.numFloors,
-                bottomFloor: data.bottomFloor,
-              });
-            } catch (err) {
-              console.error('Failed to fetch building metadata:', err);
-            }
-          }
-        } else {
-          setSelectedBuilding(null);
-        }
-      });
     });
 
     return () => map.remove();
-  }, [coords, isDrawing]);
+  }, [coords]);
+
+  // Map click handler to select or deselect buildings
+  useEffect(() => {
+    // Ensure the map is ready before attaching listeners
+    if (!mapRef.current || !styleReady) return;
+  
+    const map = mapRef.current;
+  
+    const handleClick = async (e: mapboxgl.MapMouseEvent) => {
+      if (isDrawing) return;
+  
+      const features = map.queryRenderedFeatures(e.point, {
+        layers: ['saved-buildings-fill'],
+      });
+  
+      if (features.length > 0) {
+        const feature = features[0];
+        const id = feature?.properties?.id;
+  
+        if (id) {
+          try {
+            const data = await getBuildingById(id);
+            setSelectedBuilding({
+              id: data.id,
+              name: data.name,
+              numFloors: data.numFloors,
+              bottomFloor: data.bottomFloor,
+            });
+          } catch (err) {
+            console.error('Failed to fetch building metadata:', err);
+          }
+        }
+      } else {
+        setSelectedBuilding(null);
+      }
+    };
+  
+    // Attach click listener
+    map.on('click', handleClick);
+  
+    // Clean up listener on unmount or dependency change
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [styleReady, isDrawing]);
 
   // Render POIs when they update
   useEffect(() => {

@@ -16,7 +16,6 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
       try {
         const rawBuildings = await getBuildingsForMap(mapId);
 
-        // Convert to FeatureCollection by extracting each building's GeoJSON
         const features = rawBuildings
           .map((b: any) => ({
             ...b.geojson,
@@ -33,8 +32,6 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
           features,
         };
 
-        console.log("GeoJSON FeatureCollection to render:", buildings);
-
         if (!map || !mounted || buildings.features.length === 0) return;
 
         const sourceId = 'saved-buildings';
@@ -45,7 +42,7 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
           addLayers(map, buildings, sourceId);
         }
       } catch (err) {
-        console.error("Error loading buildings from backend:", err);
+        console.error('Error loading buildings from backend:', err);
       }
     };
 
@@ -87,9 +84,25 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
     return () => {
       mounted = false;
 
-      if (map.getLayer('saved-buildings-fill')) map.removeLayer('saved-buildings-fill');
-      if (map.getLayer('saved-buildings-outline')) map.removeLayer('saved-buildings-outline');
-      if (map.getSource('saved-buildings')) map.removeSource('saved-buildings');
+      // Safely clean up layers and source
+      try {
+        if (map && typeof map.getLayer === 'function') {
+          if (map.getLayer('saved-buildings-fill')) {
+            map.removeLayer('saved-buildings-fill');
+          }
+          if (map.getLayer('saved-buildings-outline')) {
+            map.removeLayer('saved-buildings-outline');
+          }
+        }
+
+        if (map && typeof map.getSource === 'function') {
+          if (map.getSource('saved-buildings')) {
+            map.removeSource('saved-buildings');
+          }
+        }
+      } catch (err) {
+        console.warn('Error cleaning up saved buildings layers:', err);
+      }
     };
   }, [map, mapId]);
 
