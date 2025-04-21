@@ -13,6 +13,7 @@ router.post("/", async (req, res) => {
         name,
         mapId,
         numFloors,
+        bottomFloor,
         geojson,
       },
     });
@@ -70,6 +71,7 @@ router.put("/:id", async (req, res) => {
         name,
         mapId,
         numFloors,
+        bottomFloor,
         geojson,
       },
     });
