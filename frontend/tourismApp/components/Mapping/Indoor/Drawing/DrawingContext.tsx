@@ -2,9 +2,10 @@ import React, { createContext, useState, useContext } from 'react';
 
 // Define the shape of our drawing context
 type DrawingContextType = {
-  rings: [number, number][][]; 
+  rings: [number, number][][];
   isDrawing: boolean;
   buildingName: string | null;
+  roomInfo: { name: string; floor: number; buildingId: string } | null;
   startDrawing: (name: string) => void;
   addPoint: (pt: [number, number]) => void;
   completeRing: () => void;
@@ -21,16 +22,18 @@ const DrawingContext = createContext<DrawingContextType | null>(null);
 
 // This provider wraps your app or map component and gives access to drawing logic
 export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [ringsState, setRingsState] = useState<[number, number][][]>([[]]); // renamed to avoid shadowing
+  const [ringsState, setRingsState] = useState<[number, number][][]>([[]]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [buildingName, setBuildingName] = useState<string | null>(null);
+  const [roomInfo, setRoomInfo] = useState<{ name: string; floor: number; buildingId: string } | null>(null);
 
-  // Function to set rings directly (used when editing a building)
+  // Set rings directly (used when editing)
   const setRings = (newRings: [number, number][][]) => {
     setRingsState(newRings);
     setIsDrawing(true);
   };
 
+  // Add a point to the current ring
   const addPoint = (pt: [number, number]) =>
     setRingsState((prev) => {
       const updated = [...prev];
@@ -38,30 +41,48 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return updated;
     });
 
+  // Complete the current ring and start a new one
   const completeRing = () => {
     setRingsState((prev) => [...prev, []]);
   };
 
+  // Cancel drawing and clear all state
   const exitDrawing = () => {
     setRingsState([[]]);
     setIsDrawing(false);
     setBuildingName(null);
+    setRoomInfo(null);
   };
 
+  // Mark drawing as complete
   const completeShape = () => setIsDrawing(false);
 
+  // Reset drawing with current building or room name cleared
   const resetDrawing = () => {
     setRingsState([[]]);
     setIsDrawing(true);
     setBuildingName(null);
+    setRoomInfo(null);
   };
 
+  // Start drawing a building or room based on input name
   const startDrawing = (name: string) => {
     setRingsState([[]]);
-    setBuildingName(name);
+
+    // If name includes pipe-delimited metadata, treat it as a room
+    if (name.includes('|')) {
+      const [roomName, floorStr, buildingId] = name.split('|');
+      setRoomInfo({ name: roomName, floor: parseInt(floorStr), buildingId });
+      setBuildingName(null);
+    } else {
+      setBuildingName(name);
+      setRoomInfo(null);
+    }
+
     setIsDrawing(true);
   };
 
+  // Update a point in the polygon ring
   const updatePoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
     setRingsState((prev) => {
       const updated = [...prev];
@@ -71,6 +92,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return updated;
     });
 
+  // Insert a point into the polygon ring
   const insertPoint = (index: number, newPoint: [number, number], ringIndex: number = 0) =>
     setRingsState((prev) => {
       const updated = [...prev];
@@ -86,6 +108,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         rings: ringsState,
         isDrawing,
         buildingName,
+        roomInfo,
         startDrawing,
         addPoint,
         completeRing,
@@ -101,7 +124,6 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     </DrawingContext.Provider>
   );
 };
-
 
 // Hook to use the drawing context
 export const useDrawingContext = () => {
