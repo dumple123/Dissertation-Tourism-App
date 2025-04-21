@@ -14,14 +14,14 @@ import {
   DrawingHandler,
   PolygonRenderer,
   SaveButton,
-} from '~/components/Mapping/Indoor';
-import { useDrawingContext } from '~/components/Mapping/Indoor/useDrawing';
-import CreateBuildingButton from '~/components/Mapping/Indoor/CreateBuildingButton';
-import SavedBuildingsRenderer from '~/components/Mapping/Indoor/SavedBuildingsRenderer';
+} from '~/components/Mapping/Indoor/Drawing';
+import { useDrawingContext } from '~/components/Mapping/Indoor/Drawing/useDrawing';
+import CreateBuildingButton from '~/components/Mapping/Indoor/Buildings/CreateBuildingButton';
+import SavedBuildingsRenderer from '~/components/Mapping/Indoor/Buildings/SavedBuildingsRenderer';
 import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
-import BuildingSidebar from '~/components/Mapping/Indoor/BuildingSidebar';
-import EditBuildingButton from '~/components/Mapping/Indoor/EditBuildingButton';
-import DeleteBuildingButton from '~/components/Mapping/Indoor/DeleteBuildingButton';
+import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSidebar';
+import EditBuildingButton from '~/components/Mapping/Indoor/Buildings/EditBuildingButton';
+import DeleteBuildingButton from '~/components/Mapping/Indoor/Buildings/DeleteBuildingButton';
 
 // Set the Mapbox access token from Expo config
 type MapRef = mapboxgl.Map;

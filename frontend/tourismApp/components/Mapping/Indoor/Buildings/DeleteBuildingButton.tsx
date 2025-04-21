@@ -1,5 +1,5 @@
 import { getTokens } from '~/utils/tokenUtils';
-import { useDrawingContext } from './useDrawing';
+import { useDrawingContext } from '../Drawing/useDrawing';
 
 export default function DeleteBuildingButton({
   buildingId,

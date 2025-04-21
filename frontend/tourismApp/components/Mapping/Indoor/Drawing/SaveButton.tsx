@@ -11,7 +11,7 @@ export default function SaveButton({ mapId }: { mapId: string }) {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: rings.map((ring) => [...ring, ring[0]]),
+        coordinates: rings.map((ring: any[]) => [...ring, ring[0]]),
       },
       properties: {
         name: buildingName,
@@ -47,7 +47,6 @@ export default function SaveButton({ mapId }: { mapId: string }) {
       alert('Failed to save building');
     }
 
-    // 🔒 Lock editing
     completeShape();
   };
 

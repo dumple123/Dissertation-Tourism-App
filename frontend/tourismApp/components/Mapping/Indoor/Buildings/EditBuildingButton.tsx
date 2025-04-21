@@ -1,4 +1,4 @@
-import { useDrawingContext } from './useDrawing';
+import { useDrawingContext } from '../Drawing/useDrawing';
 import { getTokens } from '~/utils/tokenUtils';
 
 export default function EditBuildingButton({ buildingId }: { buildingId: string }) {
