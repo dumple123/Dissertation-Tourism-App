@@ -46,6 +46,16 @@ router.get("/:id", async (req, res) => {
   try {
     const building = await prisma.building.findUnique({
       where: { id },
+      select: {
+        id: true,
+        name: true,
+        mapId: true,
+        geojson: true,
+        numFloors: true,
+        bottomFloor: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     if (!building) {
