@@ -14,7 +14,7 @@ import {
   DrawingHandler,
   PolygonRenderer,
 } from '~/components/Mapping/Indoor/Drawing';
-import SaveButton from '~/components/Mapping/Indoor/Rooms/RoomSaveButton';
+import BuildingSaveButton from '~/components/Mapping/Indoor/Buildings/BuildingSaveButton';
 import RoomSaveButton from '~/components/Mapping/Indoor/Rooms/RoomSaveButton';
 import { useDrawingContext } from '~/components/Mapping/Indoor/Drawing/useDrawing';
 
@@ -24,7 +24,8 @@ import SavedBuildingsRenderer from '~/components/Mapping/Indoor/Buildings/SavedB
 import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
 import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
-import { getRoomsForBuilding } from '~/api/room';
+
+import { getBuildingById } from '~/api/building';
 
 // Set the Mapbox access token from Expo config
 type MapRef = mapboxgl.Map;
@@ -40,7 +41,12 @@ function InnerMapComponent() {
   const { isDrawing, completeRing, roomInfo } = useDrawingContext();
 
   const [selectedMap, setSelectedMap] = useState<{ id: string; name: string } | null>(null);
-  const [selectedBuilding, setSelectedBuilding] = useState<{ name: string; id: string } | null>(null);
+  const [selectedBuilding, setSelectedBuilding] = useState<{
+    id: string;
+    name: string;
+    bottomFloor: number;
+    numFloors: number;
+  } | null>(null);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
 
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
@@ -61,67 +67,43 @@ function InnerMapComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
-      // Add user location indicator
+      // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
 
-      // Setup source/layers for active polygon drawing
-      if (!map.getSource('drawing-polygon')) {
-        map.addSource('drawing-polygon', {
-          type: 'geojson',
-          data: {
-            type: 'Feature',
-            geometry: { type: 'Polygon', coordinates: [[]] },
-            properties: {},
-          },
-        });
+      // Map click handler to select or deselect buildings
+      map.on('click', async (e) => {
+        if (isDrawing) return;
 
-        map.addLayer({
-          id: 'drawing-polygon-fill',
-          type: 'fill',
-          source: 'drawing-polygon',
-          paint: {
-            'fill-color': '#2A9D8F',
-            'fill-opacity': 0.3,
-          },
-        });
-
-        map.addLayer({
-          id: 'drawing-polygon-outline',
-          type: 'line',
-          source: 'drawing-polygon',
-          paint: {
-            'line-color': '#264653',
-            'line-width': 2,
-          },
-        });
-      }
-
-      // Handle building click
-      map.on('click', 'saved-buildings-fill', (e) => {
-        const feature = e.features?.[0];
-        const name = feature?.properties?.name;
-        const id = feature?.properties?.id;
-
-        if (!isDrawing && name && id) {
-          setSelectedBuilding({ name, id });
-        }
-      });
-
-      // Deselect building when clicking elsewhere
-      map.on('click', (e) => {
         const features = map.queryRenderedFeatures(e.point, {
           layers: ['saved-buildings-fill'],
         });
 
-        if (features.length === 0) {
+        if (features.length > 0) {
+          const feature = features[0];
+          const id = feature?.properties?.id;
+
+          if (id) {
+            try {
+              const data = await getBuildingById(id);
+              setSelectedBuilding({
+                id: data.id,
+                name: data.name,
+                numFloors: data.numFloors,
+                bottomFloor: data.bottomFloor,
+              });
+            } catch (err) {
+              console.error('Failed to fetch building metadata:', err);
+            }
+          }
+        } else {
           setSelectedBuilding(null);
         }
       });
     });
 
     return () => map.remove();
-  }, [coords]);
+  }, [coords, isDrawing]);
 
   // Render POIs when they update
   useEffect(() => {
@@ -130,31 +112,29 @@ function InnerMapComponent() {
     return () => markers.forEach((m) => m.remove());
   }, [pois]);
 
-  // Load available floors from rooms for selected building
+  // Generate available floor numbers from selected building
   useEffect(() => {
-    const loadFloors = async () => {
-      if (!selectedBuilding) {
-        setAvailableFloors([]);
-        return;
+    if (!selectedBuilding) return;
+
+    const { bottomFloor, numFloors } = selectedBuilding;
+
+    if (
+      typeof bottomFloor === 'number' &&
+      typeof numFloors === 'number' &&
+      numFloors > 0
+    ) {
+      const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
+      setAvailableFloors(floors);
+
+      if (!floors.includes(selectedFloor)) {
+        setSelectedFloor(floors[0]);
       }
-
-      try {
-        const rooms = await getRoomsForBuilding(selectedBuilding.id);
-        const uniqueFloors = Array.from(new Set(rooms.map((r: any) => r.floor))) as number[];
-        setAvailableFloors(uniqueFloors);
-
-        if (!uniqueFloors.includes(selectedFloor)) {
-          setSelectedFloor(uniqueFloors[0] ?? 0);
-        }
-      } catch (err) {
-        console.error('Failed to fetch room floors:', err);
-      }
-    };
-
-    loadFloors();
+    } else {
+      setAvailableFloors([]);
+    }
   }, [selectedBuilding]);
 
-  // Show loading indicator while coordinates are resolving
+  // Show loading screen while waiting for location
   if (!coords && !error) {
     return (
       <div
@@ -177,7 +157,7 @@ function InnerMapComponent() {
       {/* Map selection dropdown */}
       <SelectMapDropdown onSelectMap={setSelectedMap} />
 
-      {/* Mapbox container */}
+      {/* Map container */}
       <div
         ref={mapContainerRef}
         style={{
@@ -188,7 +168,7 @@ function InnerMapComponent() {
         }}
       />
 
-      {/* Building sidebar */}
+      {/* Building metadata sidebar */}
       {selectedBuilding && (
         <BuildingSidebar
           name={selectedBuilding.name}
@@ -200,7 +180,7 @@ function InnerMapComponent() {
         />
       )}
 
-      {/* Floor selector */}
+      {/* Floor selector (based on selected building metadata) */}
       {selectedBuilding && availableFloors.length > 0 && (
         <FloorSelector
           availableFloors={availableFloors}
@@ -209,7 +189,7 @@ function InnerMapComponent() {
         />
       )}
 
-      {/* Saved building polygons */}
+      {/* Render saved buildings for the selected map */}
       {mapRef.current && selectedMap && (
         <SavedBuildingsRenderer
           key={buildingRefreshKey}
@@ -218,7 +198,7 @@ function InnerMapComponent() {
         />
       )}
 
-      {/* Drawing tools and buttons */}
+      {/* Drawing tools and controls */}
       {selectedMap && (
         <>
           {mapRef.current && isDrawing && (
@@ -228,7 +208,6 @@ function InnerMapComponent() {
             </>
           )}
 
-          {/* Top right button stack */}
           <div
             style={{
               position: 'absolute',
@@ -241,13 +220,13 @@ function InnerMapComponent() {
               alignItems: 'flex-end',
             }}
           >
-            {/* Show correct save button depending on drawing context */}
+            {/* Show correct save button based on context */}
             {mapRef.current && isDrawing ? (
               <>
                 {roomInfo ? (
                   <RoomSaveButton />
                 ) : (
-                  <SaveButton />
+                  <BuildingSaveButton mapId={selectedMap.id} />
                 )}
                 <button
                   onClick={() => completeRing()}
@@ -279,8 +258,6 @@ function InnerMapComponent() {
                 >
                   Add POI
                 </button>
-
-                {/* Show room or building creation button */}
                 {selectedBuilding ? (
                   <CreateRoomButton
                     buildingId={selectedBuilding.id}
@@ -317,7 +294,7 @@ function InnerMapComponent() {
   );
 }
 
-// Top-level map component with drawing context
+// Wrap component in drawing context
 export default function MapViewComponent() {
   return (
     <DrawingProvider>

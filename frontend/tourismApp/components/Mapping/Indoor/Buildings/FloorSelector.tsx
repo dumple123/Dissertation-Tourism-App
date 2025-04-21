@@ -13,9 +13,9 @@ const FloorSelector: React.FC<FloorSelectorProps> = ({
 }) => {
   return (
     <div
-      style={{
+        style={{
         position: 'absolute',
-        top: 80,
+        top: 140, // moved down to sit under Add POI / Add Room
         right: 20,
         backgroundColor: '#ffffff',
         borderRadius: 8,
@@ -26,7 +26,7 @@ const FloorSelector: React.FC<FloorSelectorProps> = ({
         flexDirection: 'column',
         alignItems: 'center',
         gap: 4,
-      }}
+        }}
     >
       {availableFloors
         .sort((a, b) => b - a)
