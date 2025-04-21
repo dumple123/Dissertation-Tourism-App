@@ -1,4 +1,5 @@
 import { getTokens } from '~/utils/tokenUtils';
+import { useDrawingContext } from './useDrawing';
 
 export default function DeleteBuildingButton({
   buildingId,
@@ -7,17 +8,14 @@ export default function DeleteBuildingButton({
   buildingId: string;
   onDeleteSuccess: () => void;
 }) {
+  const { exitDrawing } = useDrawingContext();
+
   const handleDelete = async () => {
     const confirmDelete = confirm('Are you sure you want to delete this building?');
     if (!confirmDelete) return;
 
     try {
       const { accessToken } = await getTokens();
-      if (!accessToken) {
-        alert('No access token found');
-        return;
-      }
-
       const res = await fetch(`http://localhost:3000/api/buildings/${buildingId}`, {
         method: 'DELETE',
         headers: {
@@ -33,7 +31,8 @@ export default function DeleteBuildingButton({
       }
 
       alert('Building deleted successfully');
-      onDeleteSuccess(); // Triggers map re-render and sidebar close
+      exitDrawing(); // now fully exits drawing mode
+      onDeleteSuccess();
 
     } catch (err) {
       console.error('Delete error:', err);

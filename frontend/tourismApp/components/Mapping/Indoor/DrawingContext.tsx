@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext } from 'react';
 
 // Define the shape of our drawing context
 type DrawingContextType = {
-  rings: [number, number][][]; // Each ring is an array of coordinates
+  rings: [number, number][][]; 
   isDrawing: boolean;
   buildingName: string | null;
   startDrawing: (name: string) => void;
@@ -13,6 +13,7 @@ type DrawingContextType = {
   updatePoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
   insertPoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
   setRings: (newRings: [number, number][][]) => void;
+  exitDrawing: () => void;
 };
 
 // Create the context object
@@ -39,6 +40,12 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const completeRing = () => {
     setRingsState((prev) => [...prev, []]);
+  };
+
+  const exitDrawing = () => {
+    setRingsState([[]]);
+    setIsDrawing(false);
+    setBuildingName(null);
   };
 
   const completeShape = () => setIsDrawing(false);
@@ -86,7 +93,8 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         resetDrawing,
         updatePoint,
         insertPoint,
-        setRings, // now correctly included
+        setRings,
+        exitDrawing,
       }}
     >
       {children}
