@@ -27,6 +27,7 @@ import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 
 import { getBuildingById } from '~/api/building';
 import { useMapStyleReady } from '~/components/Mapping/useMapStyleReady';
+import SavedRoomsRenderer from './Indoor/Rooms/SavedRoomsRenderer';
 
 // Set the Mapbox access token from Expo config
 type MapRef = mapboxgl.Map;
@@ -246,6 +247,14 @@ function InnerMapComponent() {
         />
       )}
 
+      /* Render saved rooms for the selected building and floor */
+      {mapRef.current && selectedBuilding && (
+        <SavedRoomsRenderer
+          map={mapRef.current}
+          buildingId={selectedBuilding.id}
+          floor={selectedFloor}
+        />
+      )}
       {/* Drawing tools and controls */}
       {selectedMap && (
         <>
