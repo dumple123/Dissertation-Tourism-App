@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Create a new building
 router.post("/", async (req, res) => {
-  const { name, mapId, numFloors, geojson } = req.body;
+  const { name, mapId, numFloors, bottomFloor, geojson } = req.body;
 
   try {
     const building = await prisma.building.create({
@@ -62,18 +62,19 @@ router.get("/:id", async (req, res) => {
 // Update a building by ID
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, mapId, numFloors, geojson } = req.body;
+  const { name, mapId, numFloors, bottomFloor, geojson } = req.body;
+
+  const updateData = {};
+  if (name !== undefined) updateData.name = name;
+  if (mapId !== undefined) updateData.mapId = mapId;
+  if (numFloors !== undefined) updateData.numFloors = numFloors;
+  if (bottomFloor !== undefined) updateData.bottomFloor = bottomFloor;
+  if (geojson !== undefined) updateData.geojson = geojson;
 
   try {
     const building = await prisma.building.update({
       where: { id },
-      data: {
-        name,
-        mapId,
-        numFloors,
-        bottomFloor,
-        geojson,
-      },
+      data: updateData,
     });
 
     res.json(building);
