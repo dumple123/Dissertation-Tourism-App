@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import EditBuildingButton from './EditBuildingButton';
 import DeleteBuildingButton from './DeleteBuildingButton';
-import { getTokens } from '~/utils/tokenUtils';
+import { getBuildingById, updateBuilding } from '~/api/building';
 
 interface BuildingSidebarProps {
   name: string;
@@ -17,11 +17,7 @@ const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name, id, onDeleteSuc
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const { accessToken } = await getTokens();
-        const res = await fetch(`http://localhost:3000/api/buildings/${id}`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
-        const data = await res.json();
+        const data = await getBuildingById(id);
         if (data) {
           setNumFloors(data.numFloors || 1);
           setBottomFloor(data.bottomFloor ?? 0);
@@ -36,21 +32,11 @@ const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ name, id, onDeleteSuc
 
   const handleUpdate = async () => {
     try {
-      const { accessToken } = await getTokens();
-      const res = await fetch(`http://localhost:3000/api/buildings/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name: buildingName,
-          numFloors,
-          bottomFloor,
-        }),
+      await updateBuilding(id, {
+        name: buildingName,
+        numFloors,
+        bottomFloor,
       });
-
-      if (!res.ok) throw new Error(await res.text());
       alert('Building updated!');
     } catch (err) {
       console.error('Update error:', err);

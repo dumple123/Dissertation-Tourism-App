@@ -1,19 +1,12 @@
 import { useDrawingContext } from '../Drawing/useDrawing';
-import { getTokens } from '~/utils/tokenUtils';
+import { getBuildingById } from '~/api/building';
 
 export default function EditBuildingButton({ buildingId }: { buildingId: string }) {
   const { startDrawing, setRings } = useDrawingContext();
 
   const handleClick = async () => {
     try {
-      const { accessToken } = await getTokens();
-      const res = await fetch(`http://localhost:3000/api/buildings/${buildingId}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      const building = await res.json();
+      const building = await getBuildingById(buildingId);
       const name = building.name;
       const coordinates = building.geojson.geometry.coordinates;
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { FeatureCollection } from 'geojson';
-import { getTokens } from '~/utils/tokenUtils';
+import { getBuildingsForMap } from '~/api/building';
 
 interface Props {
   map: mapboxgl.Map;
@@ -14,35 +14,16 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
 
     const fetchBuildings = async () => {
       try {
-        const { accessToken } = await getTokens();
-        if (!accessToken) {
-          console.warn("No access token for fetching buildings");
-          return;
-        }
-
-        const res = await fetch(`http://localhost:3000/api/buildings/map/${mapId}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!res.ok) {
-          console.error("Failed to fetch buildings:", await res.text());
-          return;
-        }
-
-        // Fetch raw building array from backend
-        const rawBuildings = await res.json();
+        const rawBuildings = await getBuildingsForMap(mapId);
 
         // Convert to FeatureCollection by extracting each building's GeoJSON
         const features = rawBuildings
           .map((b: any) => ({
             ...b.geojson,
-            // Add building ID and name to each feature's properties so they can be accessed on click
             properties: {
               ...b.geojson.properties,
-              id: b.id,           // Added: include building ID for sidebar actions
-              name: b.name,       // Added: ensure building name is present
+              id: b.id,
+              name: b.name,
             },
           }))
           .filter((f: any) => f && f.type === 'Feature');
@@ -52,14 +33,12 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
           features,
         };
 
-        // Debug output to verify what is being added to the map
         console.log("GeoJSON FeatureCollection to render:", buildings);
 
         if (!map || !mounted || buildings.features.length === 0) return;
 
         const sourceId = 'saved-buildings';
 
-        // Wait for the map's style to load before adding layers/sources
         if (!map.isStyleLoaded()) {
           map.once('style.load', () => addLayers(map, buildings, sourceId));
         } else {
@@ -70,7 +49,6 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
       }
     };
 
-    // Adds source and layers to the map
     const addLayers = (
       map: mapboxgl.Map,
       buildings: FeatureCollection,
@@ -109,7 +87,6 @@ export default function SavedBuildingsRenderer({ map, mapId }: Props) {
     return () => {
       mounted = false;
 
-      // Clean up layers and sources on unmount
       if (map.getLayer('saved-buildings-fill')) map.removeLayer('saved-buildings-fill');
       if (map.getLayer('saved-buildings-outline')) map.removeLayer('saved-buildings-outline');
       if (map.getSource('saved-buildings')) map.removeSource('saved-buildings');

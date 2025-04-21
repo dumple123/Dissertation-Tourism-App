@@ -1,5 +1,5 @@
-import { getTokens } from '~/utils/tokenUtils';
 import { useDrawingContext } from '../Drawing/useDrawing';
+import { deleteBuilding } from '~/api/building';
 
 export default function DeleteBuildingButton({
   buildingId,
@@ -15,25 +15,10 @@ export default function DeleteBuildingButton({
     if (!confirmDelete) return;
 
     try {
-      const { accessToken } = await getTokens();
-      const res = await fetch(`http://localhost:3000/api/buildings/${buildingId}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('Failed to delete building:', errorText);
-        alert('Failed to delete building');
-        return;
-      }
-
+      await deleteBuilding(buildingId);
       alert('Building deleted successfully');
-      exitDrawing(); // now fully exits drawing mode
+      exitDrawing();
       onDeleteSuccess();
-
     } catch (err) {
       console.error('Delete error:', err);
       alert('An error occurred while deleting');

@@ -1,5 +1,5 @@
-import { useDrawingContext } from './useDrawing';
-import { getTokens } from '~/utils/tokenUtils';
+import { useDrawingContext } from '../Drawing/useDrawing';
+import { createBuilding } from '~/api/building';
 
 export default function SaveButton({ mapId }: { mapId: string }) {
   const { rings, buildingName, completeShape } = useDrawingContext();
@@ -19,27 +19,13 @@ export default function SaveButton({ mapId }: { mapId: string }) {
     };
 
     try {
-      const { accessToken } = await getTokens();
-      if (!accessToken) throw new Error("No access token");
-
-      const response = await fetch('http://localhost:3000/api/buildings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          name: buildingName,
-          mapId,
-          numFloors: 1, // Defaulting to 1 floor; adjust if needed
-          geojson,
-        }),
+      await createBuilding({
+        name: buildingName!,
+        mapId,
+        numFloors: 1,
+        bottomFloor: 0,
+        geojson,
       });
-
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(error || 'Failed to save building');
-      }
 
       alert(`Saved "${buildingName}" to backend!`);
     } catch (err) {
