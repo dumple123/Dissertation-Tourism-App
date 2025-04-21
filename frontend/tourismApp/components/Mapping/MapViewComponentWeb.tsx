@@ -74,6 +74,38 @@ function InnerMapComponent() {
       // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
+
+      // Add the drawing polygon source and layers for user-created buildings
+      if (!map.getSource('drawing-polygon')) {
+        map.addSource('drawing-polygon', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [[]] },
+            properties: {},
+          },
+        });
+
+        map.addLayer({
+          id: 'drawing-polygon-fill',
+          type: 'fill',
+          source: 'drawing-polygon',
+          paint: {
+            'fill-color': '#2A9D8F',
+            'fill-opacity': 0.3,
+          },
+        });
+
+        map.addLayer({
+          id: 'drawing-polygon-outline',
+          type: 'line',
+          source: 'drawing-polygon',
+          paint: {
+            'line-color': '#264653',
+            'line-width': 2,
+          },
+        });
+      }
     });
 
     return () => map.remove();
@@ -81,22 +113,20 @@ function InnerMapComponent() {
 
   // Map click handler to select or deselect buildings
   useEffect(() => {
-    // Ensure the map is ready before attaching listeners
-    if (!mapRef.current || !styleReady) return;
-  
     const map = mapRef.current;
-  
+    if (!map || !styleReady) return;
+
     const handleClick = async (e: mapboxgl.MapMouseEvent) => {
       if (isDrawing) return;
-  
+
       const features = map.queryRenderedFeatures(e.point, {
         layers: ['saved-buildings-fill'],
       });
-  
+
       if (features.length > 0) {
         const feature = features[0];
         const id = feature?.properties?.id;
-  
+
         if (id) {
           try {
             const data = await getBuildingById(id);
@@ -114,11 +144,10 @@ function InnerMapComponent() {
         setSelectedBuilding(null);
       }
     };
-  
-    // Attach click listener
+
     map.on('click', handleClick);
-  
-    // Clean up listener on unmount or dependency change
+
+    // Cleanup should return void or a void-returning function
     return () => {
       map.off('click', handleClick);
     };
