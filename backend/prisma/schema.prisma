@@ -38,6 +38,7 @@ model Building {
   numFloors    Int      // e.g., 5 if it goes from B2 (-2) to 2nd floor (2)
   geojson      Json
   rooms        Room[]   // One-to-many relationship
+  interiorMarkers InteriorMarker[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
@@ -49,6 +50,20 @@ model Room {
   building    Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
   buildingId  String
   geojson     Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model InteriorMarker {
+  id          String   @id @default(uuid())
+  building    Building @relation(fields: [buildingId], references: [id])
+  buildingId  String
+  floor       Int
+  type        String
+  coordinates Json
+  label       String?
+  accessible  Boolean  @default(false)
+  metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
