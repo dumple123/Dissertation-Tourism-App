@@ -1,30 +1,58 @@
 import axios from "axios";
-import { saveTokens, getTokens, removeTokens } from "~/utils/tokenUtils"; 
+import { saveTokens, getTokens, removeTokens } from "~/utils/tokenUtils";
 import { axiosInstance, setAuthHeader, clearAuthHeader } from "~/api/index";
 
-// -- Session Management --
+// Attempts to refresh the access token using the refresh token
+const refreshAccessToken = async (refreshToken: string) => {
+  try {
+    const res = await axiosInstance.post("/refresh", { refreshToken });
+    const newAccessToken = res.data.accessToken;
+
+    // Save the new access token alongside the existing refresh token
+    await saveTokens(newAccessToken, refreshToken);
+
+    // Set the global auth header so future requests use the new token
+    setAuthHeader(newAccessToken);
+
+    return newAccessToken;
+  } catch (error) {
+    console.error("Failed to refresh token:", error);
+    return null;
+  }
+};
+
+// Initializes the authentication state on app load
+// Checks for an existing access token or attempts to refresh it if missing/expired
 export const initializeAuth = async () => {
-  const { accessToken } = await getTokens();
+  const { accessToken, refreshToken } = await getTokens();
+
+  // If we already have a valid access token, use it
   if (accessToken) {
     setAuthHeader(accessToken);
     return true;
   }
+
+  // If access token is missing or expired but we have a refresh token, try to refresh
+  if (refreshToken) {
+    const newAccessToken = await refreshAccessToken(refreshToken);
+    if (newAccessToken) return true;
+  }
+
+  // If no valid token is available, return false
   return false;
 };
 
+// Logs the user out by clearing stored tokens and auth headers
 export const logout = async () => {
   await removeTokens();
   clearAuthHeader();
   return { success: true };
 };
 
-// -- Auth API calls with centralized error handling --
+// Sends a login request and stores tokens if successful
 export const login = async (email: string, password: string) => {
   try {
     const res = await axiosInstance.post("/login", { email, password });
-
-    // Log full response to debug structure
-    console.log("Login Response:", res.data);
 
     const { accessToken, refreshToken } = res.data.tokens;
     const user = {
@@ -43,6 +71,7 @@ export const login = async (email: string, password: string) => {
   }
 };
 
+// Sends a signup request and stores tokens if successful
 export const signup = async (
   username: string,
   email: string,
@@ -54,9 +83,6 @@ export const signup = async (
       email,
       password,
     });
-
-    // Log full response to debug structure
-    console.log("Signup Response:", res.data);
 
     const { accessToken, refreshToken } = res.data.tokens;
     const user = {
@@ -75,7 +101,7 @@ export const signup = async (
   }
 };
 
-// -- Shared Error Formatter --
+// Extracts a readable error message from an axios error response
 const extractErrorMessage = (error: any, fallback: string) => {
   if (axios.isAxiosError(error)) {
     return error.response?.data?.message || fallback;
