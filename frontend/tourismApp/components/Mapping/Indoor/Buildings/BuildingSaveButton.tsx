@@ -5,13 +5,17 @@ export default function SaveButton({ mapId }: { mapId: string }) {
   const { rings, buildingName, completeShape } = useDrawingContext();
 
   const handleSave = async () => {
-    if (!rings || rings.length === 0 || rings[0].length < 3) return;
+    if (!rings || rings.length === 0) return;
+
+    // Filter out invalid rings (less than 3 points)
+    const validRings = rings.filter((ring) => ring.length >= 3);
+    if (validRings.length === 0) return;
 
     const geojson = {
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: rings.map((ring: any[]) => [...ring, ring[0]]),
+        coordinates: validRings.map((ring) => [...ring, ring[0]]), // ensure closed rings
       },
       properties: {
         name: buildingName,
