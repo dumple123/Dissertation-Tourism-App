@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
@@ -31,7 +31,7 @@ import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
 import { useMapStyleReady } from '~/components/Mapping/useMapStyleReady';
 
-// Set Mapbox token
+// Set Mapbox access token from Expo config
 mapboxgl.accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
 
 function InnerMapComponent() {
@@ -53,6 +53,26 @@ function InnerMapComponent() {
   const [selectedFloor, setSelectedFloor] = useState<number>(0);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
+
+  // BuildingSidebar ref and dynamic height tracking
+  const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
+  const [buildingSidebarHeight, setBuildingSidebarHeight] = useState(0);
+
+  // Use ResizeObserver to measure and track the height of the BuildingSidebar
+  useEffect(() => {
+    if (!buildingSidebarRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect) {
+          setBuildingSidebarHeight(entry.contentRect.height);
+        }
+      }
+    });
+
+    observer.observe(buildingSidebarRef.current);
+    return () => observer.disconnect();
+  }, [selectedBuilding]);
 
   // Load all buildings and rooms for the selected map
   useEffect(() => {
@@ -84,7 +104,7 @@ function InnerMapComponent() {
       ? roomsByBuilding[selectedBuilding.id].filter((r) => r.floor === selectedFloor)
       : [];
 
-  // Generate floor range from selected building
+  // Generate available floor numbers from selected building
   useEffect(() => {
     if (!selectedBuilding) return;
     const { bottomFloor, numFloors } = selectedBuilding;
@@ -112,27 +132,39 @@ function InnerMapComponent() {
     mapRef.current = map;
 
     map.on('load', () => {
+      // Add user location puck
       puckRef.current = createUserLocationPuck(map);
       puckRef.current?.update(coords);
 
+      // Add the drawing polygon source and layers for user-created buildings
       if (!map.getSource('drawing-polygon')) {
         map.addSource('drawing-polygon', {
           type: 'geojson',
-          data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [[]] }, properties: {} },
+          data: {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [[]] },
+            properties: {},
+          },
         });
 
         map.addLayer({
           id: 'drawing-polygon-fill',
           type: 'fill',
           source: 'drawing-polygon',
-          paint: { 'fill-color': '#2A9D8F', 'fill-opacity': 0.3 },
+          paint: {
+            'fill-color': '#2A9D8F',
+            'fill-opacity': 0.3,
+          },
         });
 
         map.addLayer({
           id: 'drawing-polygon-outline',
           type: 'line',
           source: 'drawing-polygon',
-          paint: { 'line-color': '#264653', 'line-width': 2 },
+          paint: {
+            'line-color': '#264653',
+            'line-width': 2,
+          },
         });
       }
     });
@@ -140,21 +172,21 @@ function InnerMapComponent() {
     return () => map.remove();
   }, [coords]);
 
-  // Click handler to select rooms
+  // Map click handler to select rooms
   useEffect(() => {
     if (!styleReady || !mapRef.current) return;
-  
+
     const map = mapRef.current;
-  
+
     const handleRoomClick = (e: mapboxgl.MapMouseEvent) => {
       if (isDrawing) return;
-  
+
       const features = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
-  
+
       if (features.length > 0) {
         const feature = features[0];
         const props = feature?.properties;
-  
+
         // Type-safe check to avoid TS18047
         if (props && typeof props.id === 'string') {
           const room = selectedRooms.find((r) => r.id === props.id);
@@ -164,11 +196,11 @@ function InnerMapComponent() {
           }
         }
       }
-  
+
       // If no room feature found or not matched
       setSelectedRoom(null);
     };
-  
+
     const waitForLayer = () => {
       if (map.getLayer('saved-rooms-fill')) {
         map.on('click', handleRoomClick);
@@ -176,34 +208,31 @@ function InnerMapComponent() {
         map.once('sourcedata', waitForLayer);
       }
     };
-  
+
     waitForLayer();
-  
+
     return () => {
       map.off('click', handleRoomClick);
     };
   }, [styleReady, isDrawing, selectedRooms]);
 
-  // Click handler to select buildings
+  // Map click handler to select buildings
   useEffect(() => {
     if (!styleReady || !mapRef.current) return;
-  
+
     const map = mapRef.current;
-  
+
     const handleBuildingClick = (e: mapboxgl.MapMouseEvent) => {
       if (isDrawing) return;
-  
-      // If a room was clicked, skip building selection
+
       const roomHits = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
       if (roomHits.length > 0) return;
-  
-      // Look for a building feature
+
       const buildingHits = map.queryRenderedFeatures(e.point, { layers: ['saved-buildings-fill'] });
       if (buildingHits.length > 0) {
         const feature = buildingHits[0];
         const props = feature?.properties;
-  
-        // Ensure props and id are safe to access
+
         if (props && typeof props.id === 'string') {
           const building = buildings.find((b) => b.id === props.id);
           if (building) {
@@ -212,26 +241,25 @@ function InnerMapComponent() {
           }
         }
       }
-  
-      // Deselect if no building hit
+
       setSelectedBuilding(null);
     };
-  
+
     map.on('click', handleBuildingClick);
-  
+
     return () => {
       map.off('click', handleBuildingClick);
     };
-  }, [styleReady, isDrawing, buildings]);  
+  }, [styleReady, isDrawing, buildings]);
 
-  // Render POIs
+  // Render POIs when they update
   useEffect(() => {
     if (!mapRef.current) return;
     const markers = renderPOIs(pois, mapRef.current);
     return () => markers.forEach((m) => m.remove());
   }, [pois]);
 
-  // Show loading screen if location is not ready
+  // Show loading screen while waiting for location
   if (!coords && !error) {
     return (
       <div style={{ width: '100%', height: '100vh', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -242,41 +270,60 @@ function InnerMapComponent() {
 
   return (
     <>
+      {/* Map selection dropdown */}
       <SelectMapDropdown onSelectMap={setSelectedMap} />
+
+      {/* Map container */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100vh', backgroundColor: '#e0e0e0', cursor: isDrawing ? 'crosshair' : 'grab' }} />
 
-      {selectedBuilding && (
-        <BuildingSidebar
-          building={selectedBuilding}
-          onDeleteSuccess={() => {
-            setSelectedBuilding(null);
-            setBuildingRefreshKey((prev) => prev + 1);
-          }}
-        />
-      )}
+    {/* Combined sidebar container */}
+    {(selectedBuilding || selectedRoom) && (
+      <div
+        style={{
+          position: 'absolute',
+          top: 80,
+          left: 20,
+        }}
+      >
+        {/* Render BuildingSidebar first to measure height */}
+        {selectedBuilding && (
+          <div ref={buildingSidebarRef} style={{ position: 'relative', zIndex: 11 }}>
+            <BuildingSidebar
+              building={selectedBuilding}
+              onDeleteSuccess={() => {
+                setSelectedBuilding(null);
+                setBuildingRefreshKey((prev) => prev + 1);
+              }}
+            />
+          </div>
+        )}
 
-      {selectedRoom && (
-        <RoomSidebar
-          room={selectedRoom}
-          onDeleteSuccess={() => {
-            setSelectedRoom(null);
-            setBuildingRefreshKey((prev) => prev + 1);
-          }}
-        />
-      )}
+        {/* Then render RoomSidebar using measured height */}
+        {selectedRoom && (
+          <div style={{ position: 'absolute', zIndex: 9 }}>
+            <RoomSidebar
+              room={selectedRoom}
+              topOffset={80 + (buildingSidebarHeight || 300) + 24}
+              onDeleteSuccess={() => {
+                setSelectedRoom(null);
+                setBuildingRefreshKey((prev) => prev + 1);
+              }}
+            />
+          </div>
+        )}
+      </div>
+    )}
 
+      {/* Floor selector (based on selected building metadata) */}
       {selectedBuilding && availableFloors.length > 0 && (
         <FloorSelector availableFloors={availableFloors} selectedFloor={selectedFloor} onSelect={setSelectedFloor} />
       )}
 
-      {mapRef.current && selectedMap && (
-        <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />
-      )}
+      {/* Render saved buildings and rooms */}
+      {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
+      {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
 
-      {mapRef.current && selectedBuilding && (
-        <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />
-      )}
-
+      {/* Drawing tools and controls */}
       {selectedMap && (
         <>
           {mapRef.current && isDrawing && (
@@ -287,6 +334,7 @@ function InnerMapComponent() {
           )}
 
           <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10, display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+            {/* Show correct save button based on context */}
             {mapRef.current && isDrawing ? (
               <>
                 {roomInfo ? <RoomSaveButton /> : <BuildingSaveButton mapId={selectedMap.id} />}
@@ -310,6 +358,7 @@ function InnerMapComponent() {
         </>
       )}
 
+      {/* Display location error if present */}
       {error && (
         <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#fff3f3', padding: 10, borderRadius: 8, color: '#cc0000', textAlign: 'center' }}>
           Location error: {error}
@@ -319,6 +368,7 @@ function InnerMapComponent() {
   );
 }
 
+// Wrap component in drawing context
 export default function MapViewComponent() {
   return (
     <DrawingProvider>

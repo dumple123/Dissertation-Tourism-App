@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import EditBuildingButton from './EditBuildingButton';
 import DeleteBuildingButton from './DeleteBuildingButton';
 import { updateBuilding } from '~/api/building';
@@ -14,122 +14,129 @@ interface BuildingSidebarProps {
   onDeleteSuccess: () => void;
 }
 
-const BuildingSidebar: React.FC<BuildingSidebarProps> = ({ building, onDeleteSuccess }) => {
-  const [buildingName, setBuildingName] = useState(building.name);
-  const [numFloors, setNumFloors] = useState<number>(building.numFloors ?? 1);
-  const [bottomFloor, setBottomFloor] = useState<number>(building.bottomFloor ?? 0);
+// Wrap in forwardRef so we can measure height from parent
+const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
+  ({ building, onDeleteSuccess }, ref) => {
+    const [buildingName, setBuildingName] = useState(building.name);
+    const [numFloors, setNumFloors] = useState<number>(building.numFloors ?? 1);
+    const [bottomFloor, setBottomFloor] = useState<number>(building.bottomFloor ?? 0);
 
-  // When the building changes (e.g., selecting a different one), update local state
-  useEffect(() => {
-    setBuildingName(building.name);
-    setNumFloors(building.numFloors ?? 1);
-    setBottomFloor(building.bottomFloor ?? 0);
-  }, [building]);
+    // Update local state if new building is selected
+    useEffect(() => {
+      setBuildingName(building.name);
+      setNumFloors(building.numFloors ?? 1);
+      setBottomFloor(building.bottomFloor ?? 0);
+    }, [building]);
 
-  const handleUpdate = async () => {
-    try {
-      await updateBuilding(building.id, {
-        name: buildingName,
-        numFloors,
-        bottomFloor,
-      });
-      alert('Building updated!');
-    } catch (err) {
-      console.error('Update error:', err);
-      alert('Failed to update building');
-    }
-  };
+    const handleUpdate = async () => {
+      try {
+        await updateBuilding(building.id, {
+          name: buildingName,
+          numFloors,
+          bottomFloor,
+        });
+        alert('Building updated!');
+      } catch (err) {
+        console.error('Update error:', err);
+        alert('Failed to update building');
+      }
+    };
 
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        top: 80,
-        left: 20,
-        backgroundColor: '#ffffff',
-        padding: '16px',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
-        zIndex: 11,
-        width: 260,
-        boxSizing: 'border-box',
-        fontFamily: 'Open Sans, sans-serif',
-      }}
-    >
-      <h3 style={{ marginTop: 0, fontSize: 18, marginBottom: 16 }}>Building Details</h3>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
-        <input
-          type="text"
-          value={buildingName}
-          onChange={(e) => setBuildingName(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            border: '1px solid #ccc',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
-
-      <div style={{ marginBottom: 12 }}>
-        <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Number of Floors</label>
-        <input
-          type="number"
-          value={numFloors}
-          onChange={(e) => setNumFloors(parseInt(e.target.value))}
-          style={{
-            width: '100%',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            border: '1px solid #ccc',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
-
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Bottom Floor Number</label>
-        <input
-          type="number"
-          value={bottomFloor}
-          onChange={(e) => setBottomFloor(parseInt(e.target.value))}
-          style={{
-            width: '100%',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            border: '1px solid #ccc',
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
-
-      <button
-        onClick={handleUpdate}
+    return (
+      <div
+        ref={ref} // Forwarded ref attached here
         style={{
-          width: '100%',
-          padding: '10px',
-          backgroundColor: '#2A9D8F',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '6px',
-          fontWeight: 'bold',
-          marginBottom: 10,
-          cursor: 'pointer',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          backgroundColor: '#ffffff',
+          padding: '16px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+          zIndex: 11,
+          width: 260,
           boxSizing: 'border-box',
+          fontFamily: 'Open Sans, sans-serif',
         }}
       >
-        Save Changes
-      </button>
+        <h3 style={{ marginTop: 0, fontSize: 18, marginBottom: 16 }}>Building Details</h3>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <EditBuildingButton buildingId={building.id} />
-        <DeleteBuildingButton buildingId={building.id} onDeleteSuccess={onDeleteSuccess} />
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Name</label>
+          <input
+            type="text"
+            value={buildingName}
+            onChange={(e) => setBuildingName(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              border: '1px solid #ccc',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Number of Floors</label>
+          <input
+            type="number"
+            value={numFloors}
+            onChange={(e) => setNumFloors(parseInt(e.target.value))}
+            style={{
+              width: '100%',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              border: '1px solid #ccc',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontWeight: 600, display: 'block', marginBottom: 4 }}>Bottom Floor Number</label>
+          <input
+            type="number"
+            value={bottomFloor}
+            onChange={(e) => setBottomFloor(parseInt(e.target.value))}
+            style={{
+              width: '100%',
+              padding: '6px 10px',
+              borderRadius: '6px',
+              border: '1px solid #ccc',
+              boxSizing: 'border-box',
+            }}
+          />
+        </div>
+
+        <button
+          onClick={handleUpdate}
+          style={{
+            width: '100%',
+            padding: '10px',
+            backgroundColor: '#2A9D8F',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '6px',
+            fontWeight: 'bold',
+            marginBottom: 10,
+            cursor: 'pointer',
+            boxSizing: 'border-box',
+          }}
+        >
+          Save Changes
+        </button>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <EditBuildingButton buildingId={building.id} />
+          <DeleteBuildingButton buildingId={building.id} onDeleteSuccess={onDeleteSuccess} />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+// Optional display name for debugging
+BuildingSidebar.displayName = 'BuildingSidebar';
 
 export default BuildingSidebar;
