@@ -14,6 +14,8 @@ type DrawingContextType = {
   updatePoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
   insertPoint: (index: number, newPoint: [number, number], ringIndex?: number) => void;
   setRings: (newRings: [number, number][][]) => void;
+  setRoomInfo: (info: { name: string; floor: number; buildingId: string } | null) => void;
+  setIsDrawing: (value: boolean) => void;
   exitDrawing: () => void;
 };
 
@@ -117,6 +119,8 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updatePoint,
         insertPoint,
         setRings,
+        setRoomInfo,
+        setIsDrawing,
         exitDrawing,
       }}
     >

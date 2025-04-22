@@ -96,7 +96,7 @@ function InnerMapComponent() {
     };
 
     loadMapData();
-  }, [selectedMap]);
+  }, [selectedMap, buildingRefreshKey]);
 
   // Filter rooms for current floor and selected building
   const selectedRooms =
@@ -292,10 +292,17 @@ function InnerMapComponent() {
               building={selectedBuilding}
               onDeleteSuccess={() => {
                 setSelectedBuilding(null);
-                setBuildingRefreshKey((prev) => prev + 1);
+                setBuildingRefreshKey((k) => k + 1);
               }}
-              onEditSuccess={() => {
-                setBuildingRefreshKey((prev) => prev + 1); // ✅ refresh on edit
+              onEditSuccess={async () => {
+                // Refresh buildings list
+                setBuildingRefreshKey((k) => k + 1);
+
+                // Re-fetch and re-select updated building to sync sidebar
+                if (selectedBuilding) {
+                  const fresh = await getBuildingById(selectedBuilding.id);
+                  setSelectedBuilding(fresh);
+                }
               }}
             />
           </div>
@@ -311,6 +318,7 @@ function InnerMapComponent() {
                 setSelectedRoom(null);
                 setBuildingRefreshKey((prev) => prev + 1);
               }}
+              onStartEdit={() => {}}
             />
           </div>
         )}

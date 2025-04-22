@@ -123,7 +123,7 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
     };
 
     // Attach event listeners
-    canvas.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
     map.on('click', handleClick);
     map.on('mousemove', mouseMoveHandler);
     canvas.focus();
@@ -132,11 +132,24 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
     return () => {
       map.off('click', handleClick);
       if (mouseMoveHandler) map.off('mousemove', mouseMoveHandler);
-      canvas.removeEventListener('keydown', handleKeyDown);
-
+      window.removeEventListener('keydown', handleKeyDown);
+    
       if (map.getLayer('cursor-point-layer')) map.removeLayer('cursor-point-layer');
       if (map.getSource('cursor-point')) map.removeSource('cursor-point');
-
+    
+      // Clear drawing polygon geometry
+      const drawingSource = map.getSource('drawing-polygon') as mapboxgl.GeoJSONSource;
+      if (drawingSource) {
+        drawingSource.setData({
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[]],
+          },
+          properties: {},
+        });
+      }
+    
       canvas.style.cursor = '';
     };
   }, [map, rings, isDrawing, isStyleReady, addPoint, completeRing, completeShape]);

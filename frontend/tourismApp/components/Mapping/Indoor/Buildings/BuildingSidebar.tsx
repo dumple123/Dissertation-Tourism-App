@@ -2,6 +2,7 @@ import React, { useState, useEffect, forwardRef } from 'react';
 import EditBuildingButton from './EditBuildingButton';
 import DeleteBuildingButton from './DeleteBuildingButton';
 import { updateBuilding } from '~/api/building';
+import { useDrawingContext } from '../Drawing/useDrawing';
 
 interface BuildingSidebarProps {
   building: {
@@ -12,7 +13,7 @@ interface BuildingSidebarProps {
     [key: string]: any;
   };
   onDeleteSuccess: () => void;
-  onEditSuccess: () => void; // ✅ New prop for refreshing after edit
+  onEditSuccess: () => void; 
 }
 
 // Wrap in forwardRef so we can measure height from parent
@@ -21,6 +22,7 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
     const [buildingName, setBuildingName] = useState(building.name);
     const [numFloors, setNumFloors] = useState<number>(building.numFloors ?? 1);
     const [bottomFloor, setBottomFloor] = useState<number>(building.bottomFloor ?? 0);
+    const { rings, exitDrawing } = useDrawingContext();
 
     // Update local state if a new building is selected
     useEffect(() => {
@@ -35,8 +37,20 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
           name: buildingName,
           numFloors,
           bottomFloor,
+          geojson: {
+            type: 'Feature',
+            geometry: {
+              type: 'Polygon',
+              coordinates: rings.map((ring) => [...ring, ring[0]]),
+            },
+            properties: {
+              name: buildingName,
+            },
+          },
         });
         alert('Building updated!');
+        exitDrawing();
+        onEditSuccess();
       } catch (err) {
         console.error('Update error:', err);
         alert('Failed to update building');
@@ -131,7 +145,7 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <EditBuildingButton
             buildingId={building.id}
-            onEditSuccess={onEditSuccess} // ✅ Refresh after loading into drawing
+            onEditSuccess={onEditSuccess} 
           />
           <DeleteBuildingButton
             buildingId={building.id}

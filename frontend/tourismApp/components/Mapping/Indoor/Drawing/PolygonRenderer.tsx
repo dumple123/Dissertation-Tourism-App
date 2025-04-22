@@ -20,7 +20,7 @@ export default function PolygonRenderer({ map }: Props) {
     if (!map || !styleReady) return;
 
     const source = map.getSource('drawing-polygon') as mapboxgl.GeoJSONSource | undefined;
-    if (!source || rings.length === 0 || rings[0].length < 3) return;
+    if (!source || rings.length === 0 || rings.every(ring => ring.length < 3)) return;
 
     const geojson: Feature<GeoJsonPolygon> = {
       type: 'Feature',

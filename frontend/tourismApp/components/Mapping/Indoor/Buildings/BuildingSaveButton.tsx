@@ -8,7 +8,7 @@ export default function SaveButton({
   mapId: string;
   onSaveSuccess: () => void;
 }) {
-  const { rings, buildingName, completeShape } = useDrawingContext();
+  const { rings, buildingName, exitDrawing } = useDrawingContext();
 
   const handleSave = async () => {
     if (!rings || rings.length === 0) return;
@@ -38,13 +38,12 @@ export default function SaveButton({
       });
 
       alert(`Saved "${buildingName}" to backend!`);
+      exitDrawing();
       onSaveSuccess();
     } catch (err) {
       console.error('Failed to save building:', err);
       alert('Failed to save building');
     }
-
-    completeShape();
   };
 
   return (
