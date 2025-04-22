@@ -33,21 +33,28 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
 
     const handleUpdate = async () => {
       try {
+        const validRings = rings.filter((ring) => ring.length >= 3);
+    
+        const updatedGeojson = validRings.length > 0
+          ? {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: validRings.map((ring) => [...ring, ring[0]]),
+              },
+              properties: {
+                name: buildingName,
+              },
+            }
+          : building.geojson;
+    
         await updateBuilding(building.id, {
           name: buildingName,
           numFloors,
           bottomFloor,
-          geojson: {
-            type: 'Feature',
-            geometry: {
-              type: 'Polygon',
-              coordinates: rings.map((ring) => [...ring, ring[0]]),
-            },
-            properties: {
-              name: buildingName,
-            },
-          },
+          geojson: updatedGeojson,
         });
+    
         alert('Building updated!');
         exitDrawing();
         onEditSuccess();

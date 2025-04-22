@@ -5,9 +5,9 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
   const {
     rings,
     roomInfo,
-    completeShape,
     editingRoomId,
     setEditingRoomId,
+    completeShape,
     exitDrawing,
   } = useDrawingContext();
 
@@ -23,13 +23,16 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: validRings.map((ring) => [...ring, ring[0]]), // ensure closed rings
+        coordinates: validRings.map((ring) => [...ring, ring[0]]), // Ensure closed rings
       },
       properties: {},
     };
 
     try {
       if (editingRoomId) {
+        // Debug: confirm edit mode
+        console.log('Updating room:', editingRoomId);
+
         // Update existing room
         await updateRoom(editingRoomId, {
           name: roomInfo.name,
@@ -39,6 +42,9 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
         });
         alert(`Room "${roomInfo.name}" updated successfully.`);
       } else {
+        // Debug: confirm creation mode
+        console.log('Creating new room');
+
         // Create new room
         await createRoom({
           name: roomInfo.name,
@@ -55,7 +61,7 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
       alert('Failed to save room');
     }
 
-    // Clean up state
+    // Cleanup state
     completeShape();
     setEditingRoomId(null);
     exitDrawing();
