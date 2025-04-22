@@ -1,15 +1,24 @@
 import { useDrawingContext } from '~/components/Mapping/Indoor/Drawing/useDrawing';
-import { createRoom } from '~/api/room';
+import { createRoom, updateRoom } from '~/api/room';
 
 export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () => void }) {
-  const { rings, roomInfo, completeShape } = useDrawingContext();
+  const {
+    rings,
+    roomInfo,
+    completeShape,
+    editingRoomId,
+    setEditingRoomId,
+    exitDrawing,
+  } = useDrawingContext();
 
   const handleSave = async () => {
     if (!roomInfo || !rings || rings.length === 0) return;
 
+    // Filter out short/invalid rings
     const validRings = rings.filter((ring) => ring.length >= 3);
     if (validRings.length === 0) return;
 
+    // Build GeoJSON object
     const geojson = {
       type: 'Feature',
       geometry: {
@@ -20,21 +29,36 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
     };
 
     try {
-      await createRoom({
-        name: roomInfo.name,
-        floor: roomInfo.floor,
-        buildingId: roomInfo.buildingId,
-        geojson,
-      });
+      if (editingRoomId) {
+        // Update existing room
+        await updateRoom(editingRoomId, {
+          name: roomInfo.name,
+          floor: roomInfo.floor,
+          buildingId: roomInfo.buildingId,
+          geojson,
+        });
+        alert(`Room "${roomInfo.name}" updated successfully.`);
+      } else {
+        // Create new room
+        await createRoom({
+          name: roomInfo.name,
+          floor: roomInfo.floor,
+          buildingId: roomInfo.buildingId,
+          geojson,
+        });
+        alert(`Room "${roomInfo.name}" created successfully.`);
+      }
 
-      alert(`Room "${roomInfo.name}" saved successfully.`);
       onSaveSuccess();
     } catch (err) {
       console.error('Failed to save room:', err);
       alert('Failed to save room');
     }
 
+    // Clean up state
     completeShape();
+    setEditingRoomId(null);
+    exitDrawing();
   };
 
   return (

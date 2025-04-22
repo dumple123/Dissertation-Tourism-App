@@ -6,6 +6,7 @@ type DrawingContextType = {
   isDrawing: boolean;
   buildingName: string | null;
   roomInfo: { name: string; floor: number; buildingId: string } | null;
+  editingRoomId: string | null;
   startDrawing: (name: string) => void;
   addPoint: (pt: [number, number]) => void;
   completeRing: () => void;
@@ -16,6 +17,7 @@ type DrawingContextType = {
   setRings: (newRings: [number, number][][]) => void;
   setRoomInfo: (info: { name: string; floor: number; buildingId: string } | null) => void;
   setIsDrawing: (value: boolean) => void;
+  setEditingRoomId: (id: string | null) => void;
   exitDrawing: () => void;
 };
 
@@ -28,6 +30,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isDrawing, setIsDrawing] = useState(false);
   const [buildingName, setBuildingName] = useState<string | null>(null);
   const [roomInfo, setRoomInfo] = useState<{ name: string; floor: number; buildingId: string } | null>(null);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
 
   // Set rings directly (used when editing)
   const setRings = (newRings: [number, number][][]) => {
@@ -54,6 +57,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsDrawing(false);
     setBuildingName(null);
     setRoomInfo(null);
+    setEditingRoomId(null);
   };
 
   // Mark drawing as complete
@@ -65,6 +69,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsDrawing(true);
     setBuildingName(null);
     setRoomInfo(null);
+    setEditingRoomId(null);
   };
 
   // Start drawing a building or room based on input name
@@ -111,6 +116,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isDrawing,
         buildingName,
         roomInfo,
+        editingRoomId,
         startDrawing,
         addPoint,
         completeRing,
@@ -121,6 +127,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setRings,
         setRoomInfo,
         setIsDrawing,
+        setEditingRoomId,
         exitDrawing,
       }}
     >

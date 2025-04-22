@@ -1,17 +1,38 @@
 import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { FeatureCollection } from 'geojson';
+import { useDrawingContext } from '../Drawing/useDrawing';
 
 interface Props {
   map: mapboxgl.Map;
-  rooms: any[]; // Preloaded rooms for the current building and floor
+  rooms: {
+    id: string;
+    name: string;
+    floor: number;
+    buildingId: string;
+    geojson: {
+      type: 'Feature';
+      geometry: {
+        type: 'Polygon';
+        coordinates: [number, number][][];
+      };
+      properties: any;
+    };
+  }[];
 }
 
 export default function SavedRoomsRenderer({ map, rooms }: Props) {
-  useEffect(() => {
-    let mounted = true;
+  const { isDrawing } = useDrawingContext();
 
-    // Transform room GeoJSON into a FeatureCollection
+  useEffect(() => {
+    // Hide saved rooms while in drawing mode
+    if (isDrawing || rooms.length === 0) return;
+
+    const sourceId = 'saved-rooms';
+    const fillId = 'saved-rooms-fill';
+    const outlineId = 'saved-rooms-outline';
+
+    // Convert rooms to GeoJSON FeatureCollection
     const features = rooms
       .map((r) => ({
         ...r.geojson,
@@ -30,27 +51,22 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       features,
     };
 
-    if (!map || !mounted || features.length === 0) return;
-
-    const sourceId = 'saved-rooms';
-
     const addLayers = () => {
-      // If source already exists, update it
+      // If source exists, update data
       if (map.getSource(sourceId)) {
-        const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
-        source.setData(featureCollection);
+        const src = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+        src.setData(featureCollection);
         return;
       }
 
-      // Add room GeoJSON source
       map.addSource(sourceId, {
         type: 'geojson',
         data: featureCollection,
       });
 
-      // Add fill layer for rooms (above building fill)
+      // Fill layer
       map.addLayer({
-        id: 'saved-rooms-fill',
+        id: fillId,
         type: 'fill',
         source: sourceId,
         paint: {
@@ -59,9 +75,9 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         },
       });
 
-      // Add outline for rooms
+      // Outline layer
       map.addLayer({
-        id: 'saved-rooms-outline',
+        id: outlineId,
         type: 'line',
         source: sourceId,
         paint: {
@@ -71,7 +87,6 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       });
     };
 
-    // Ensure layers are added only after the map style is loaded
     if (!map.isStyleLoaded()) {
       map.once('style.load', addLayers);
     } else {
@@ -79,24 +94,16 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
     }
 
     return () => {
-      mounted = false;
-
-      // Clean up layers and source when component unmounts or updates
+      // Cleanup on unmount or rerender
       try {
-        if (map.getLayer('saved-rooms-fill')) {
-          map.removeLayer('saved-rooms-fill');
-        }
-        if (map.getLayer('saved-rooms-outline')) {
-          map.removeLayer('saved-rooms-outline');
-        }
-        if (map.getSource(sourceId)) {
-          map.removeSource(sourceId);
-        }
+        if (map.getLayer(fillId)) map.removeLayer(fillId);
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
       } catch (err) {
         console.warn('Error cleaning up saved room layers:', err);
       }
     };
-  }, [map, rooms]);
+  }, [map, rooms, isDrawing]);
 
   return null;
 }

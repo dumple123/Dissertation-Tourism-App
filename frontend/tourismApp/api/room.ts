@@ -37,6 +37,7 @@ export async function getRoomsForBuilding(buildingId: string) {
 export async function updateRoom(id: string, data: {
   name?: string;
   floor?: number;
+  buildingId?: string;
   geojson?: any;
 }) {
   const { accessToken } = await getTokens();
