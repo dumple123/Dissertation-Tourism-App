@@ -26,6 +26,7 @@ import SelectMapDropdown from '~/components/Mapping/SelectMapDropdown';
 import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSidebar';
 import RoomSidebar from '~/components/Mapping/Indoor/Rooms/RoomSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
+import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/CreateMarkerButton';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -397,7 +398,15 @@ function InnerMapComponent() {
               Add POI
             </button>
             {selectedBuilding ? (
-              <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
+              <>
+                <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
+                <CreateInteriorMarkerButton
+                  buildingId={selectedBuilding.id}
+                  currentFloor={selectedFloor}
+                  map={mapRef.current!}
+                  onMarkerCreated={() => setBuildingRefreshKey((k) => k + 1)}
+                />
+              </>
             ) : (
               <CreateBuildingButton />
             )}
