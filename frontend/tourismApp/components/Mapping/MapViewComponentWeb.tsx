@@ -326,53 +326,76 @@ function InnerMapComponent() {
       {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
       {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
 
+      {/* Drawing interaction layers */}
+      {mapRef.current && isDrawing && (
+        <>
+          <DrawingHandler map={mapRef.current} />
+          <PolygonRenderer map={mapRef.current} />
+        </>
+      )}
+
       {/* Drawing tools and controls */}
-      {mapRef.current && isDrawing ? (
-      <>
-        {roomInfo ? (
-          <RoomSaveButton onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)} />
+          {selectedMap && (
+      <div
+        style={{
+          position: 'absolute',
+          top: 20,
+          right: 20,
+          zIndex: 10,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          alignItems: 'flex-end',
+        }}
+      >
+        {mapRef.current && isDrawing ? (
+          <>
+            {roomInfo ? (
+              <RoomSaveButton onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)} />
+            ) : (
+              <BuildingSaveButton
+                mapId={selectedMap!.id}
+                onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)}
+              />
+            )}
+            <button
+              onClick={completeRing}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#F4A261',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                width: '100%',
+              }}
+            >
+              + Add Hole
+            </button>
+          </>
         ) : (
-          <BuildingSaveButton
-            mapId={selectedMap!.id}
-            onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)}
-          />
+          <>
+            <button
+              onClick={() => createPOI(addPOI)}
+              style={{
+                padding: '8px 12px',
+                backgroundColor: '#2A9D8F',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+              }}
+            >
+              Add POI
+            </button>
+            {selectedBuilding ? (
+              <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
+            ) : (
+              <CreateBuildingButton />
+            )}
+          </>
         )}
-        <button
-          onClick={completeRing}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: '#F4A261',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            width: '100%',
-          }}
-        >
-          + Add Hole
-        </button>
-      </>
-    ) : (
-      <>
-        <button
-          onClick={() => createPOI(addPOI)}
-          style={{
-            padding: '8px 12px',
-            backgroundColor: '#2A9D8F',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-          }}
-        >
-          Add POI
-        </button>
-        {selectedBuilding ? (
-          <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
-        ) : (
-          <CreateBuildingButton />
-        )}
-      </>
+      </div>
     )}
 
       {/* Display location error if present */}
