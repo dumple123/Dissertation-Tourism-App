@@ -1,7 +1,13 @@
 import { useDrawingContext } from '../Drawing/useDrawing';
 import { getBuildingById } from '~/api/building';
 
-export default function EditBuildingButton({ buildingId }: { buildingId: string }) {
+export default function EditBuildingButton({
+  buildingId,
+  onEditSuccess,
+}: {
+  buildingId: string;
+  onEditSuccess: () => void;
+}) {
   const { startDrawing, setRings } = useDrawingContext();
 
   const handleClick = async () => {
@@ -13,12 +19,12 @@ export default function EditBuildingButton({ buildingId }: { buildingId: string 
       // Start drawing and load building geometry
       startDrawing(name);
 
-      // Remove the closing coordinate from each ring
       const transformed = coordinates.map(
         (ring: [number, number][]) => ring.slice(0, -1)
       );
-
       setRings(transformed);
+
+      onEditSuccess();
     } catch (err) {
       console.error('Error loading building for edit:', err);
     }

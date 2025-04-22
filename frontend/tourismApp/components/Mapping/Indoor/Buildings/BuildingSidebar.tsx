@@ -12,16 +12,17 @@ interface BuildingSidebarProps {
     [key: string]: any;
   };
   onDeleteSuccess: () => void;
+  onEditSuccess: () => void; // ✅ New prop for refreshing after edit
 }
 
 // Wrap in forwardRef so we can measure height from parent
 const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
-  ({ building, onDeleteSuccess }, ref) => {
+  ({ building, onDeleteSuccess, onEditSuccess }, ref) => {
     const [buildingName, setBuildingName] = useState(building.name);
     const [numFloors, setNumFloors] = useState<number>(building.numFloors ?? 1);
     const [bottomFloor, setBottomFloor] = useState<number>(building.bottomFloor ?? 0);
 
-    // Update local state if new building is selected
+    // Update local state if a new building is selected
     useEffect(() => {
       setBuildingName(building.name);
       setNumFloors(building.numFloors ?? 1);
@@ -44,7 +45,7 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
 
     return (
       <div
-        ref={ref} // Forwarded ref attached here
+        ref={ref}
         style={{
           position: 'absolute',
           top: 0,
@@ -128,15 +129,19 @@ const BuildingSidebar = forwardRef<HTMLDivElement, BuildingSidebarProps>(
         </button>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <EditBuildingButton buildingId={building.id} />
-          <DeleteBuildingButton buildingId={building.id} onDeleteSuccess={onDeleteSuccess} />
+          <EditBuildingButton
+            buildingId={building.id}
+            onEditSuccess={onEditSuccess} // ✅ Refresh after loading into drawing
+          />
+          <DeleteBuildingButton
+            buildingId={building.id}
+            onDeleteSuccess={onDeleteSuccess}
+          />
         </div>
       </div>
     );
   }
 );
 
-// Optional display name for debugging
 BuildingSidebar.displayName = 'BuildingSidebar';
-
 export default BuildingSidebar;

@@ -1,7 +1,13 @@
 import { useDrawingContext } from '../Drawing/useDrawing';
 import { createBuilding } from '~/api/building';
 
-export default function SaveButton({ mapId }: { mapId: string }) {
+export default function SaveButton({
+  mapId,
+  onSaveSuccess,
+}: {
+  mapId: string;
+  onSaveSuccess: () => void;
+}) {
   const { rings, buildingName, completeShape } = useDrawingContext();
 
   const handleSave = async () => {
@@ -32,6 +38,7 @@ export default function SaveButton({ mapId }: { mapId: string }) {
       });
 
       alert(`Saved "${buildingName}" to backend!`);
+      onSaveSuccess();
     } catch (err) {
       console.error('Failed to save building:', err);
       alert('Failed to save building');
