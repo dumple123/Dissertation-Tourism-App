@@ -8,6 +8,7 @@ import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
+import { getMarkersForBuilding } from '~/api/interiorMarkers';
 
 import {
   DrawingProvider,
@@ -27,6 +28,7 @@ import BuildingSidebar from '~/components/Mapping/Indoor/Buildings/BuildingSideb
 import RoomSidebar from '~/components/Mapping/Indoor/Rooms/RoomSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/CreateMarkerButton';
+import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/SavedMarkerRenderer';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -54,6 +56,7 @@ function InnerMapComponent() {
   const [selectedFloor, setSelectedFloor] = useState<number>(0);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
+  const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -98,6 +101,23 @@ function InnerMapComponent() {
 
     loadMapData();
   }, [selectedMap, buildingRefreshKey]);
+
+
+  // Load all markers for a building
+  useEffect(() => {
+    if (!selectedBuilding) return;
+  
+    const loadMarkers = async () => {
+      try {
+        const markers = await getMarkersForBuilding(selectedBuilding.id);
+        setInteriorMarkers(markers);
+      } catch (err) {
+        console.error('Failed to load interior markers:', err);
+      }
+    };
+  
+    loadMarkers();
+  }, [selectedBuilding, buildingRefreshKey]);
 
   // Filter rooms for current floor and selected building
   const selectedRooms =
@@ -335,6 +355,13 @@ function InnerMapComponent() {
       {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
       {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
 
+      {mapRef.current && selectedBuilding && (
+        <SavedInteriorMarkersRenderer
+          map={mapRef.current}
+          markers={interiorMarkers.filter(m => m.floor === selectedFloor)}
+        />
+      )}
+
       {/* Drawing interaction layers */}
       {mapRef.current && isDrawing && (
         <>
@@ -355,6 +382,7 @@ function InnerMapComponent() {
           flexDirection: 'column',
           gap: 8,
           alignItems: 'flex-end',
+          paddingBottom: 80,
         }}
       >
         {mapRef.current && isDrawing ? (
