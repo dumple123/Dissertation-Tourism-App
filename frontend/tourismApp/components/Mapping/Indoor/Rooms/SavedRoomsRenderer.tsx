@@ -31,6 +31,7 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
     const sourceId = 'saved-rooms';
     const fillId = 'saved-rooms-fill';
     const outlineId = 'saved-rooms-outline';
+    const labelId = 'saved-rooms-label'; // Symbol layer for room names
 
     // Convert rooms to GeoJSON FeatureCollection
     const features = rooms
@@ -59,6 +60,7 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         return;
       }
 
+      // Add source for saved rooms
       map.addSource(sourceId, {
         type: 'geojson',
         data: featureCollection,
@@ -85,6 +87,23 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           'line-width': 1.5,
         },
       });
+
+      // Label layer for room names
+      map.addLayer({
+        id: labelId,
+        type: 'symbol',
+        source: sourceId,
+        layout: {
+          'text-field': ['get', 'name'],
+          'text-size': 12,
+          'text-anchor': 'center',
+        },
+        paint: {
+          'text-color': '#000',
+          'text-halo-color': '#fff',
+          'text-halo-width': 1.5,
+        },
+      });
     };
 
     if (!map.isStyleLoaded()) {
@@ -98,6 +117,7 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       try {
         if (map.getLayer(fillId)) map.removeLayer(fillId);
         if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+        if (map.getLayer(labelId)) map.removeLayer(labelId);
         if (map.getSource(sourceId)) map.removeSource(sourceId);
       } catch (err) {
         console.warn('Error cleaning up saved room layers:', err);
