@@ -29,7 +29,7 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   onStartEdit,
   topOffset = 360,
 }) => {
-  const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId } = useDrawingContext();
+  const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId, resetDrawing, } = useDrawingContext();
 
   const handleDelete = async () => {
     const confirmDelete = confirm('Are you sure you want to delete this room?');
@@ -48,10 +48,11 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   const handleEdit = () => {
     const coordinates = room.geojson.geometry.coordinates;
     const transformed = coordinates.map((ring: [number, number][]) => ring.slice(0, -1));
+  
+    resetDrawing(); 
     setRings(transformed);
     setRoomInfo({ name: room.name, floor: room.floor, buildingId: room.buildingId });
     setEditingRoomId(room.id);
-    setIsDrawing(true); 
   };
 
   return (

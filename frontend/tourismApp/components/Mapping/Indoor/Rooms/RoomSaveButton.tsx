@@ -23,7 +23,10 @@ export default function RoomSaveButton({ onSaveSuccess }: { onSaveSuccess: () =>
       type: 'Feature',
       geometry: {
         type: 'Polygon',
-        coordinates: validRings.map((ring) => [...ring, ring[0]]), // Ensure closed rings
+        coordinates: validRings.map((ring) => {
+          const isClosed = ring.length > 2 && ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1];
+          return isClosed ? ring : [...ring, ring[0]];
+        }),
       },
       properties: {},
     };

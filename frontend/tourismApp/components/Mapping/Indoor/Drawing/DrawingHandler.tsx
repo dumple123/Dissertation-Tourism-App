@@ -104,10 +104,17 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
         }
       }
 
-      if (currentRing.length > 2) {
-        const [fx, fy] = currentRing[0];
-        const dist = Math.hypot(fx - pt[0], fy - pt[1]);
-        if (dist < 0.0001) {
+      if (
+        currentRing.length > 2 &&
+        e.originalEvent.shiftKey
+      ) {
+        const pixelPt = map.project(pt);
+        const pixelFirst = map.project(currentRing[0]);
+        const dx = pixelFirst.x - pixelPt.x;
+        const dy = pixelFirst.y - pixelPt.y;
+        const distPx = Math.sqrt(dx * dx + dy * dy);
+      
+        if (distPx < 10) {
           completeRing();
           return;
         }
