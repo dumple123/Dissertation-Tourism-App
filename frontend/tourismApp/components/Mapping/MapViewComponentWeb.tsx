@@ -54,6 +54,7 @@ function InnerMapComponent() {
   const [selectedBuilding, setSelectedBuilding] = useState<any | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<number>(0);
+  const [selectedRooms, setSelectedRooms] = useState<any[]>([]);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
   const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
@@ -103,6 +104,19 @@ function InnerMapComponent() {
     loadMapData();
   }, [selectedMap, buildingRefreshKey]);
 
+  // Compute and update selected rooms when building or floor changes
+  useEffect(() => {
+    if (!selectedBuilding || !roomsByBuilding[selectedBuilding.id]) {
+      setSelectedRooms([]);
+      return;
+    }
+
+    const filtered = roomsByBuilding[selectedBuilding.id].filter(
+      (room) => room.floor === selectedFloor
+    );
+
+    setSelectedRooms(filtered);
+  }, [selectedBuilding, roomsByBuilding, selectedFloor]);
 
   // Load all markers for a building
   useEffect(() => {
@@ -119,12 +133,6 @@ function InnerMapComponent() {
   
     loadMarkers();
   }, [selectedBuilding, buildingRefreshKey]);
-
-  // Filter rooms for current floor and selected building
-  const selectedRooms =
-    selectedBuilding && roomsByBuilding[selectedBuilding.id]
-      ? roomsByBuilding[selectedBuilding.id].filter((r) => r.floor === selectedFloor)
-      : [];
 
   // Generate available floor numbers from selected building
   useEffect(() => {
