@@ -7,6 +7,8 @@ type DrawingContextType = {
   buildingName: string | null;
   roomInfo: { name: string; floor: number; buildingId: string } | null;
   editingRoomId: string | null;
+  snapTargets: [number, number][][];
+  setSnapTargets: (targets: [number, number][][]) => void;
   startDrawing: (name: string) => void;
   addPoint: (pt: [number, number]) => void;
   completeRing: () => void;
@@ -31,6 +33,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [buildingName, setBuildingName] = useState<string | null>(null);
   const [roomInfo, setRoomInfo] = useState<{ name: string; floor: number; buildingId: string } | null>(null);
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [snapTargets, setSnapTargets] = useState<[number, number][][]>([]);
 
   // Set rings directly (used when editing)
   const setRings = (newRings: [number, number][][]) => {
@@ -58,6 +61,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setBuildingName(null);
     setRoomInfo(null);
     setEditingRoomId(null);
+    setSnapTargets([]);
   };
 
   // Mark drawing as complete
@@ -70,6 +74,7 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setBuildingName(null);
     setRoomInfo(null);
     setEditingRoomId(null);
+    setSnapTargets([]);
   };
 
   // Start drawing a building or room based on input name
@@ -117,6 +122,8 @@ export const DrawingProvider: React.FC<{ children: React.ReactNode }> = ({ child
         buildingName,
         roomInfo,
         editingRoomId,
+        snapTargets,
+        setSnapTargets,
         startDrawing,
         addPoint,
         completeRing,

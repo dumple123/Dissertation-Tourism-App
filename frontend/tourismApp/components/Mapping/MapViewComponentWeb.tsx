@@ -134,8 +134,10 @@ function InnerMapComponent() {
     if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
       const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
       setAvailableFloors(floors);
-      if (!floors.includes(selectedFloor)) {
-        setSelectedFloor(floors[0]);
+      if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
+        const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
+        setAvailableFloors(floors);
+        setSelectedFloor(floors[0]); // Always reset to first available floor
       }
     }
   }, [selectedBuilding]);
