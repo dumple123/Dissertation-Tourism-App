@@ -8,7 +8,7 @@ import { renderPOIs } from './utils/POI/renderPOIs';
 import { createPOI } from './utils/POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
-import { getMarkersForBuilding } from '~/api/interiorMarkers';
+import { getMarkersForBuilding, deleteInteriorMarker } from '~/api/interiorMarkers';
 
 import {
   DrawingProvider,
@@ -57,6 +57,7 @@ function InnerMapComponent() {
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
   const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
+  const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -359,6 +360,7 @@ function InnerMapComponent() {
         <SavedInteriorMarkersRenderer
           map={mapRef.current}
           markers={interiorMarkers.filter(m => m.floor === selectedFloor)}
+          onMarkerSelect={setSelectedMarker}
         />
       )}
 
@@ -432,7 +434,15 @@ function InnerMapComponent() {
                   buildingId={selectedBuilding.id}
                   currentFloor={selectedFloor}
                   map={mapRef.current!}
-                  onMarkerCreated={() => setBuildingRefreshKey((k) => k + 1)}
+                  selectedMarker={selectedMarker}
+                  onMarkerCreated={() => {
+                    setSelectedMarker(null);
+                    setBuildingRefreshKey((k) => k + 1);
+                  }}
+                  onDeleteMarker={() => {
+                    setSelectedMarker(null);
+                    setBuildingRefreshKey((k) => k + 1);
+                  }}
                 />
               </>
             ) : (

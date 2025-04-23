@@ -79,16 +79,29 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// DELETE a marker
+// DELETE a marker by ID
 router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+
   try {
-    await prisma.interiorMarker.delete({
-      where: { id: req.params.id },
+    // Check if the marker exists first
+    const existing = await prisma.interiorMarker.findUnique({
+      where: { id },
     });
-    res.status(204).end();
+
+    if (!existing) {
+      return res.status(404).json({ error: 'Interior marker not found' });
+    }
+
+    // Proceed to delete
+    await prisma.interiorMarker.delete({
+      where: { id },
+    });
+
+    res.status(204).end(); // No content, deletion successful
   } catch (err) {
-    console.error('Failed to delete marker:', err);
-    res.status(500).json({ error: 'Failed to delete marker' });
+    console.error('Failed to delete interior marker:', err);
+    res.status(500).json({ error: 'Failed to delete interior marker', detail: err.message });
   }
 });
 

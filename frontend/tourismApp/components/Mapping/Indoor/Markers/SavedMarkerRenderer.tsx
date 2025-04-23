@@ -11,6 +11,7 @@ interface Props {
     label?: string;
     accessible?: boolean;
   }[];
+  onMarkerSelect?: (marker: any) => void;
 }
 
 // Safely access marker type from known types
@@ -18,7 +19,7 @@ function getMarkerType(type: string): MarkerTypeInfo {
   return markerTypes[type as MarkerType] ?? markerTypes.other;
 }
 
-export default function SavedInteriorMarkersRenderer({ map, markers }: Props) {
+export default function SavedInteriorMarkersRenderer({ map, markers, onMarkerSelect }: Props) {
   const markerRefs = useRef<mapboxgl.Marker[]>([]);
 
   useEffect(() => {
@@ -60,6 +61,11 @@ export default function SavedInteriorMarkersRenderer({ map, markers }: Props) {
         `;
         el = div;
       }
+
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        if (onMarkerSelect) onMarkerSelect(markerData); // call selection
+      };
 
       const marker = new mapboxgl.Marker({ element: el })
         .setLngLat(markerData.coordinates)
