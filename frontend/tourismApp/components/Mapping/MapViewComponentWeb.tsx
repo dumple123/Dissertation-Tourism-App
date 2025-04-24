@@ -29,6 +29,7 @@ import RoomSidebar from '~/components/Mapping/Indoor/Rooms/RoomSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/CreateMarkerButton';
 import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/SavedMarkerRenderer';
+import FloorImageOverlayButton from '~/components/Mapping/FloorImageOverlayButton';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -309,6 +310,9 @@ function InnerMapComponent() {
 
       {/* Map container */}
       <div ref={mapContainerRef} style={{ width: '100%', height: '100vh', backgroundColor: '#e0e0e0', cursor: isDrawing ? 'crosshair' : 'grab' }} />
+
+      {/* floor plan image */}
+      {mapRef.current && <FloorImageOverlayButton map={mapRef.current} />}
 
     {/* Combined sidebar container */}
     {(selectedBuilding || selectedRoom) && (
