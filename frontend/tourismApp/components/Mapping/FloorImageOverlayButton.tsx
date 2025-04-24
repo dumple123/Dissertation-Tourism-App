@@ -10,9 +10,9 @@ type LngLat = [number, number];
 
 export default function FloorImageOverlayButton({ map }: Props) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [aspectRatio, setAspectRatio] = useState<number>(1);
   const [center, setCenter] = useState<LngLat | null>(null);
-  const [scale, setScale] = useState<number>(1);
+  const [scaleX, setScaleX] = useState<number>(1);
+  const [scaleY, setScaleY] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
   const [pinned, setPinned] = useState<boolean>(false);
 
@@ -25,12 +25,12 @@ export default function FloorImageOverlayButton({ map }: Props) {
     imageUrl: string,
     map: mapboxgl.Map,
     center: LngLat,
-    scale: number,
-    aspectRatio: number
+    scaleX: number,
+    scaleY: number
   ) => {
     const centerPx = map.project(center);
-    const width = 100 * scale;
-    const height = width / aspectRatio;
+    const width = 100 * scaleX;
+    const height = 100 * scaleY;
 
     const topLeft = map.unproject([centerPx.x - width / 2, centerPx.y - height / 2]);
     const topRight = map.unproject([centerPx.x + width / 2, centerPx.y - height / 2]);
@@ -65,24 +65,23 @@ export default function FloorImageOverlayButton({ map }: Props) {
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-  
+
     const url = URL.createObjectURL(file);
     setImageUrl(url);
-  
+
     const img = new Image();
     img.onload = () => {
-      const ratio = img.width / img.height;
       const mapCenter = map.getCenter();
       const newCenter: LngLat = [mapCenter.lng, mapCenter.lat];
-  
-      setAspectRatio(ratio);
+
       setCenter(newCenter);
-      setScale(1);
+      setScaleX(1);
+      setScaleY(1);
       setRotation(0);
       setPinned(true);
-  
+
       removeMapImageOverlay();
-      applyStaticImageOverlay(url, map, newCenter, 1, ratio); 
+      applyStaticImageOverlay(url, map, newCenter, 1, 1);
     };
     img.src = url;
   };
@@ -94,7 +93,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
     setPinned(newPinned);
 
     if (newPinned) {
-      applyStaticImageOverlay(imageUrl, map, center, scale, aspectRatio);
+      applyStaticImageOverlay(imageUrl, map, center, scaleX, scaleY);
     } else {
       removeMapImageOverlay();
     }
@@ -102,6 +101,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
 
   return (
     <>
+      {/* Upload & Pin Controls */}
       <div style={{
         position: 'absolute',
         top: 20,
@@ -124,18 +124,20 @@ export default function FloorImageOverlayButton({ map }: Props) {
         )}
       </div>
 
+      {/* HTML Overlay Manipulator (only when unpinned) */}
       {imageUrl && center && !pinned && (
         <ImageManipulator
           map={map}
           imageUrl={imageUrl}
           center={center}
-          scale={scale}
+          scaleX={scaleX}
+          scaleY={scaleY}
           rotation={rotation}
-          aspectRatio={aspectRatio}
           disabled={false}
-          onChange={({ center, scale, rotation }) => {
+          onChange={({ center, scaleX, scaleY, rotation }) => {
             setCenter(center as LngLat);
-            setScale(scale);
+            setScaleX(scaleX);
+            setScaleY(scaleY);
             setRotation(rotation);
           }}
         />

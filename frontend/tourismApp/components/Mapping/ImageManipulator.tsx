@@ -5,14 +5,15 @@ interface ImageManipulatorProps {
   map: mapboxgl.Map;
   imageUrl: string;
   center: mapboxgl.LngLatLike;
-  scale: number;
-  rotation: number; // in degrees
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
   onChange: (data: {
     center: mapboxgl.LngLatLike;
-    scale: number;
+    scaleX: number;
+    scaleY: number;
     rotation: number;
   }) => void;
-  aspectRatio: number;
   disabled?: boolean;
 }
 
@@ -20,44 +21,38 @@ export default function ImageManipulator({
   map,
   imageUrl,
   center,
-  scale,
+  scaleX,
+  scaleY,
   rotation,
-  aspectRatio,
   onChange,
   disabled = false,
 }: ImageManipulatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
-  const dragStartCenterPx = useRef<{ x: number; y: number } | null>(null); // NEW
+  const dragStartCenterPx = useRef<{ x: number; y: number } | null>(null);
 
-  const getCenterPixels = () => {
-    return map.project(center);
-  };
+  const getCenterPixels = () => map.project(center);
 
   const updateCenterFromPixel = (x: number, y: number) => {
     const lngLat = map.unproject([x, y]);
-    onChange({ center: [lngLat.lng, lngLat.lat], scale, rotation });
+    onChange({ center: [lngLat.lng, lngLat.lat], scaleX, scaleY, rotation });
   };
 
-  // Drag entire image
   const handleMouseDown = (e: React.MouseEvent) => {
     if (disabled) return;
     e.stopPropagation();
     dragStart.current = { x: e.clientX, y: e.clientY };
-    dragStartCenterPx.current = getCenterPixels(); // store original center
+    dragStartCenterPx.current = getCenterPixels();
     setIsDragging(true);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging || !dragStart.current || !dragStartCenterPx.current) return;
-
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
-
     const newX = dragStartCenterPx.current.x + dx;
     const newY = dragStartCenterPx.current.y + dy;
-
     updateCenterFromPixel(newX, newY);
   };
 
@@ -67,45 +62,82 @@ export default function ImageManipulator({
     dragStartCenterPx.current = null;
   };
 
-  // Rotation
   const handleRotate = (e: React.MouseEvent) => {
     e.stopPropagation();
     const centerPx = getCenterPixels();
     const origin = { x: centerPx.x, y: centerPx.y };
-    const start = { x: e.clientX, y: e.clientY };
-    const startAngle = Math.atan2(start.y - origin.y, start.x - origin.x);
+    const startAngle = Math.atan2(e.clientY - origin.y, e.clientX - origin.x);
     const initialRotation = rotation;
-  
+
     const onMove = (moveEvent: MouseEvent) => {
-      const current = { x: moveEvent.clientX, y: moveEvent.clientY };
-      const currentAngle = Math.atan2(current.y - origin.y, current.x - origin.x);
+      const currentAngle = Math.atan2(moveEvent.clientY - origin.y, moveEvent.clientX - origin.x);
       const angleDelta = ((currentAngle - startAngle) * 180) / Math.PI;
       const newRotation = initialRotation + angleDelta;
-  
-      onChange({ center, scale, rotation: newRotation });
+      onChange({ center, scaleX, scaleY, rotation: newRotation });
     };
-  
+
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-  
+
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   };
 
-  // Resize (from corner)
-  const handleResize = (e: React.MouseEvent) => {
+  // Edge stretching (resizes along one axis)
+  const handleEdgeResize = (edge: 'left' | 'right' | 'top' | 'bottom') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const start = { x: e.clientX, y: e.clientY };
+    const initialScaleX = scaleX;
+    const initialScaleY = scaleY;
+
+    const onMove = (moveEvent: MouseEvent) => {
+      const dx = moveEvent.clientX - start.x;
+      const dy = moveEvent.clientY - start.y;
+      let newScaleX = scaleX;
+      let newScaleY = scaleY;
+
+      if (edge === 'left' || edge === 'right') {
+        const direction = edge === 'right' ? 1 : -1;
+        const delta = direction * dx / 100;
+        let next = initialScaleX + delta;
+        if (Math.abs(next) < 0.1) next = 0.1 * Math.sign(next || delta);
+        newScaleX = next;
+      }
+      if (edge === 'top' || edge === 'bottom') {
+        const direction = edge === 'bottom' ? 1 : -1;
+        const delta = direction * dy / 100;
+        let next = initialScaleY + delta;
+        if (Math.abs(next) < 0.1) next = 0.1 * Math.sign(next || delta);
+        newScaleY = next;
+      }
+
+      onChange({ center, scaleX: newScaleX, scaleY: newScaleY, rotation });
+    };
+
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  // Corner resize (preserves aspect ratio)
+  const handleCornerResize = () => (e: React.MouseEvent) => {
     e.stopPropagation();
     const centerPx = getCenterPixels();
     const origin = { x: centerPx.x, y: centerPx.y };
+    const initialScale = Math.max(scaleX, scaleY);
 
     const onMove = (moveEvent: MouseEvent) => {
       const dx = moveEvent.clientX - origin.x;
       const dy = moveEvent.clientY - origin.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      const newScale = Math.max(0.1, distance / 100); // arbitrary scale base
-      onChange({ center, scale: newScale, rotation });
+      const newScale = Math.max(0.1, distance / 100);
+      onChange({ center, scaleX: newScale, scaleY: newScale, rotation });
     };
 
     const onUp = () => {
@@ -129,8 +161,8 @@ export default function ImageManipulator({
   }, [isDragging]);
 
   const centerPx = getCenterPixels();
-  const width = 100 * scale;
-  const height = width / aspectRatio;
+  const width = 100 * scaleX;
+  const height = 100 * scaleY;
 
   return (
     <div
@@ -138,11 +170,15 @@ export default function ImageManipulator({
       onMouseDown={handleMouseDown}
       style={{
         position: 'absolute',
-        left: centerPx.x - width / 2,
-        top: centerPx.y - height / 2,
-        width,
-        height,
-        transform: `rotate(${rotation}deg)`,
+        left: centerPx.x - Math.abs(width) / 2,
+        top: centerPx.y - Math.abs(height) / 2,
+        width: Math.abs(width),
+        height: Math.abs(height),
+        transform: `
+          rotate(${rotation}deg)
+          scaleX(${scaleX < 0 ? -1 : 1})
+          scaleY(${scaleY < 0 ? -1 : 1})
+        `,
         transformOrigin: 'center center',
         zIndex: 11,
         pointerEvents: disabled ? 'none' : 'auto',
@@ -160,42 +196,92 @@ export default function ImageManipulator({
         }}
       />
 
-      {/* Resize Handle */}
       {!disabled && (
-        <div
-          onMouseDown={handleResize}
-          style={{
-            position: 'absolute',
-            right: -6,
-            bottom: -6,
-            width: 12,
-            height: 12,
-            backgroundColor: '#E76F51',
-            borderRadius: '50%',
-            border: '2px solid white',
-            cursor: 'nwse-resize',
-          }}
-        />
-      )}
+        <>
+          {/* Edge drag zones */}
+          <div onMouseDown={handleEdgeResize('left')} style={edgeZone('left', width, height)} />
+          <div onMouseDown={handleEdgeResize('right')} style={edgeZone('right', width, height)} />
+          <div onMouseDown={handleEdgeResize('top')} style={edgeZone('top', width, height)} />
+          <div onMouseDown={handleEdgeResize('bottom')} style={edgeZone('bottom', width, height)} />
 
-      {/* Rotate Handle */}
-      {!disabled && (
-        <div
-          onMouseDown={handleRotate}
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: -30,
-            transform: 'translateX(-50%)',
-            width: 14,
-            height: 14,
-            backgroundColor: '#F4A261',
-            border: '2px solid white',
-            borderRadius: '50%',
-            cursor: 'grab',
-          }}
-        />
+          {/* Corner drag zone for aspect-ratio-resize */}
+          <div onMouseDown={handleCornerResize()} style={cornerZone('bottom-right', width, height)} />
+
+          {/* Rotate handle */}
+          <div
+            onMouseDown={handleRotate}
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: -30,
+              transform: 'translateX(-50%)',
+              width: 14,
+              height: 14,
+              backgroundColor: '#F4A261',
+              border: '2px solid white',
+              borderRadius: '50%',
+              cursor: 'grab',
+            }}
+          />
+        </>
       )}
     </div>
   );
+}
+
+const MIN_ZONE_SIZE = 20;
+const MIN_CORNER_SIZE = 28;
+
+// Accept width/height of image and scale the hit area proportionally
+function edgeZone(
+  position: 'left' | 'right' | 'top' | 'bottom',
+  width: number,
+  height: number
+): React.CSSProperties {
+  const dynamicSize =
+    position === 'left' || position === 'right'
+      ? Math.max(MIN_ZONE_SIZE, height * 0.1)
+      : Math.max(MIN_ZONE_SIZE, width * 0.1);
+  const half = dynamicSize / 2;
+
+  const common: React.CSSProperties = {
+    position: 'absolute',
+    zIndex: 12,
+    backgroundColor: 'transparent',
+    pointerEvents: 'auto',
+  };
+
+  switch (position) {
+    case 'left':
+      return { ...common, top: -half, bottom: -half, left: -half, width: dynamicSize, cursor: 'ew-resize' };
+    case 'right':
+      return { ...common, top: -half, bottom: -half, right: -half, width: dynamicSize, cursor: 'ew-resize' };
+    case 'top':
+      return { ...common, left: -half, right: -half, top: -half, height: dynamicSize, cursor: 'ns-resize' };
+    case 'bottom':
+      return { ...common, left: -half, right: -half, bottom: -half, height: dynamicSize, cursor: 'ns-resize' };
+  }
+}
+
+function cornerZone(
+  corner: 'bottom-right',
+  width: number,
+  height: number
+): React.CSSProperties {
+  const dynamicSize = Math.max(MIN_CORNER_SIZE, Math.min(width, height) * 0.15);
+  const half = dynamicSize / 2;
+
+  const common: React.CSSProperties = {
+    position: 'absolute',
+    width: dynamicSize,
+    height: dynamicSize,
+    zIndex: 13,
+    backgroundColor: 'transparent',
+    pointerEvents: 'auto',
+  };
+
+  switch (corner) {
+    case 'bottom-right':
+      return { ...common, right: -half, bottom: -half, cursor: 'nwse-resize' };
+  }
 }
