@@ -12,11 +12,13 @@ interface Props {
     name: string;
     floor: number;
     buildingId: string;
+    accessible: boolean;
+    isArea: boolean;
     geojson: {
       type: 'Feature';
       geometry: {
         type: 'Polygon';
-        coordinates: [number, number][][]; // Polygon with outer ring only
+        coordinates: [number, number][][];
       };
       properties: any;
     };
@@ -53,6 +55,8 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           id: r.id,
           floor: r.floor,
           buildingId: r.buildingId,
+          accessible: r.accessible,
+          isArea: r.isArea,
         },
       })),
     };
@@ -68,8 +72,20 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         type: 'fill',
         source: sourceId,
         paint: {
-          'fill-color': '#219ebc',
+          // Fill red with stripes for inaccessible rooms, else blue
+          'fill-color': [
+            'case',
+            ['==', ['get', 'accessible'], false],
+            '#e63946', // red
+            '#219ebc', // default blue
+          ],
           'fill-opacity': 0.4,
+          'fill-pattern': [
+            'case',
+            ['==', ['get', 'accessible'], false],
+            'diagonal-stripe',
+            '',
+          ],
         },
       });
 
@@ -77,11 +93,31 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         id: outlineId,
         type: 'line',
         source: sourceId,
+        filter: ['==', ['get', 'isArea'], false], // hide border for areas
         paint: {
           'line-color': '#023047',
           'line-width': 1.5,
         },
       });
+
+      // Add stripe pattern if not already added
+      if (!map.hasImage('diagonal-stripe')) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 8;
+        canvas.height = 8;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.strokeStyle = 'rgba(230, 57, 70, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(0, 8);
+          ctx.lineTo(8, 0);
+          ctx.stroke();
+        }
+        createImageBitmap(canvas).then((imageBitmap) => {
+          map.addImage('diagonal-stripe', imageBitmap, { pixelRatio: 2 });
+        });
+      }
     }
 
     return () => {

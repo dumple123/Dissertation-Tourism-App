@@ -5,11 +5,18 @@ const router = express.Router();
 
 // Create room
 router.post("/", async (req, res) => {
-  const { name, floor, buildingId, geojson } = req.body;
+  const { name, floor, buildingId, geojson, accessible = false, isArea = false } = req.body;
 
   try {
     const room = await prisma.room.create({
-      data: { name, floor, buildingId, geojson },
+      data: {
+        name,
+        floor,
+        buildingId,
+        geojson,
+        accessible,
+        isArea,
+      },
     });
     res.status(201).json(room);
   } catch (err) {
@@ -34,12 +41,18 @@ router.get("/building/:buildingId", async (req, res) => {
 // Update room
 router.put("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, floor, geojson } = req.body;
+  const { name, floor, geojson, accessible, isArea } = req.body;
 
   try {
     const room = await prisma.room.update({
       where: { id },
-      data: { name, floor, geojson },
+      data: {
+        name,
+        floor,
+        geojson,
+        accessible,
+        isArea,
+      },
     });
     res.json(room);
   } catch (err) {

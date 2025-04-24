@@ -44,14 +44,16 @@ model Building {
 }
 
 model Room {
-  id          String   @id @default(uuid())
-  name        String
-  floor       Int
-  building    Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  buildingId  String
-  geojson     Json
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  floor        Int
+  building     Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  buildingId   String
+  geojson      Json
+  accessible   Boolean  @default(false) 
+  isArea       Boolean  @default(false) 
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model InteriorMarker {

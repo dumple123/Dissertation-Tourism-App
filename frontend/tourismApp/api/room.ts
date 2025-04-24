@@ -2,6 +2,7 @@ import { getTokens } from '~/utils/tokenUtils';
 
 const API_BASE = 'http://localhost:3000/api/rooms';
 
+// Create a new room
 export async function createRoom(data: {
   name: string;
   floor: number;
@@ -22,6 +23,7 @@ export async function createRoom(data: {
   return await res.json();
 }
 
+// Get all rooms for a building
 export async function getRoomsForBuilding(buildingId: string) {
   const { accessToken } = await getTokens();
   const res = await fetch(`${API_BASE}/building/${buildingId}`, {
@@ -34,11 +36,14 @@ export async function getRoomsForBuilding(buildingId: string) {
   return await res.json();
 }
 
+// Update a room
 export async function updateRoom(id: string, data: {
   name?: string;
   floor?: number;
   buildingId?: string;
   geojson?: any;
+  accessible?: boolean;
+  isArea?: boolean;
 }) {
   const { accessToken } = await getTokens();
   const res = await fetch(`${API_BASE}/${id}`, {
@@ -54,6 +59,7 @@ export async function updateRoom(id: string, data: {
   return await res.json();
 }
 
+// Delete a room
 export async function deleteRoom(id: string) {
   const { accessToken } = await getTokens();
   const res = await fetch(`${API_BASE}/${id}`, {

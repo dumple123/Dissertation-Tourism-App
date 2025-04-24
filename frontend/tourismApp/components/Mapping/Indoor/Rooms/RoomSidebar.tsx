@@ -1,5 +1,5 @@
-import React from 'react';
-import { deleteRoom } from '~/api/room';
+import React, { useState } from 'react';
+import { deleteRoom, updateRoom } from '~/api/room';
 import { useDrawingContext } from '../Drawing/useDrawing';
 
 interface RoomSidebarProps {
@@ -12,10 +12,12 @@ interface RoomSidebarProps {
       type: 'Feature';
       geometry: {
         type: 'Polygon';
-        coordinates: [number, number][][];
+        coordinates: [number, number][][],
       };
       properties: any;
     };
+    accessible: boolean;
+    isArea: boolean;
     [key: string]: any;
   };
   onDeleteSuccess: () => void;
@@ -29,7 +31,9 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   onStartEdit,
   topOffset = 360,
 }) => {
-  const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId, resetDrawing, } = useDrawingContext();
+  const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId, resetDrawing } = useDrawingContext();
+  const [accessible, setAccessible] = useState(room.accessible);
+  const [isArea, setIsArea] = useState(room.isArea);
 
   const handleDelete = async () => {
     const confirmDelete = confirm('Are you sure you want to delete this room?');
@@ -55,6 +59,21 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
     setEditingRoomId(room.id);
   };
 
+  const handleToggle = async (field: 'accessible' | 'isArea', value: boolean) => {
+    try {
+      await updateRoom(room.id, { [field]: value });
+  
+      if (field === 'accessible') setAccessible(value);
+      if (field === 'isArea') setIsArea(value);
+  
+      // Trigger renderer refresh
+      onDeleteSuccess(); 
+    } catch (err) {
+      console.error(`Failed to update room ${field}:`, err);
+      alert(`Failed to update room ${field}`);
+    }
+  };
+
   return (
     <div
       style={{
@@ -75,6 +94,26 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
 
       <p><strong>Name:</strong> {room.name}</p>
       <p><strong>Floor:</strong> {room.floor}</p>
+
+      <label style={{ display: 'block', marginBottom: 8 }}>
+        <input
+          type="checkbox"
+          checked={accessible}
+          onChange={(e) => handleToggle('accessible', e.target.checked)}
+          style={{ marginRight: 8 }}
+        />
+        Accessible
+      </label>
+
+      <label style={{ display: 'block', marginBottom: 16 }}>
+        <input
+          type="checkbox"
+          checked={isArea}
+          onChange={(e) => handleToggle('isArea', e.target.checked)}
+          style={{ marginRight: 8 }}
+        />
+        Is Area
+      </label>
 
       <button
         onClick={handleEdit}
