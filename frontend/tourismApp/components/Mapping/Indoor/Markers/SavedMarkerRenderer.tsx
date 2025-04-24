@@ -109,6 +109,18 @@ export default function SavedInteriorMarkersRenderer({ map, markers, onMarkerSel
         .addTo(map);
 
       markerRefs.current[markerData.id] = { marker, el, shown: false };
+      const zoom = map.getZoom();
+      if (zoom >= 16.5) {
+        el.style.display = 'block';
+        el.style.opacity = '0';
+        requestAnimationFrame(() => {
+          el.style.transition = 'opacity 300ms ease-in';
+          el.style.opacity = '1';
+          markerRefs.current[markerData.id].shown = true;
+        });
+      } else {
+        el.style.display = 'none';
+}
     });
 
     return () => {
