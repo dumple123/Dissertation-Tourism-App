@@ -228,14 +228,15 @@ export default function ImageManipulator({
             style={{
               position: 'absolute',
               left: '50%',
-              top: -30,
+              top: `-${Math.max(24, height * 0.15)}px`, // scale with image height
               transform: 'translateX(-50%)',
-              width: 14,
-              height: 14,
+              width: Math.max(14, width * 0.05),
+              height: Math.max(14, width * 0.05),
               backgroundColor: '#F4A261',
               border: '2px solid white',
               borderRadius: '50%',
               cursor: 'grab',
+              zIndex: 14,
             }}
           />
         </>
