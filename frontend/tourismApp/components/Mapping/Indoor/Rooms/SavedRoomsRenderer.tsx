@@ -29,7 +29,14 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
   const { isDrawing } = useDrawingContext();
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Trigger label refresh on zoom change
+  const sourceId = 'saved-rooms';
+  const fillId = 'saved-rooms-fill';
+  const outlineId = 'saved-rooms-outline';
+
+  const labelSourceId = 'saved-room-labels';
+  const labelId = 'saved-rooms-label';
+
+  // Zoom listener for label refresh
   useEffect(() => {
     const update = () => setRefreshKey((n) => n + 1);
     map.on('zoom', update);
@@ -38,15 +45,11 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
     };
   }, [map]);
 
-  // Render static room shapes (fill and outline)
+  // Render room shapes (fill and outline)
   useEffect(() => {
-    if (isDrawing || rooms.length === 0) return;
+    if (rooms.length === 0) return;
 
-    const sourceId = 'saved-rooms';
-    const fillId = 'saved-rooms-fill';
-    const outlineId = 'saved-rooms-outline';
-
-    const staticFeatures: FeatureCollection = {
+    const features: FeatureCollection = {
       type: 'FeatureCollection',
       features: rooms.map((r) => ({
         ...r.geojson,
@@ -64,7 +67,7 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
     if (!map.getSource(sourceId)) {
       map.addSource(sourceId, {
         type: 'geojson',
-        data: staticFeatures,
+        data: features,
       });
 
       map.addLayer({
@@ -72,12 +75,11 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         type: 'fill',
         source: sourceId,
         paint: {
-          // Fill red with stripes for inaccessible rooms, else blue
           'fill-color': [
             'case',
             ['==', ['get', 'accessible'], false],
-            '#e63946', // red
-            '#219ebc', // default blue
+            '#e63946',
+            '#219ebc',
           ],
           'fill-opacity': 0.4,
           'fill-pattern': [
@@ -93,14 +95,14 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         id: outlineId,
         type: 'line',
         source: sourceId,
-        filter: ['==', ['get', 'isArea'], false], // hide border for areas
+        filter: ['==', ['get', 'isArea'], false],
         paint: {
           'line-color': '#023047',
           'line-width': 1.5,
         },
       });
 
-      // Add stripe pattern if not already added
+      // Add striped image pattern if missing
       if (!map.hasImage('diagonal-stripe')) {
         const canvas = document.createElement('canvas');
         canvas.width = 8;
@@ -118,29 +120,19 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           map.addImage('diagonal-stripe', imageBitmap, { pixelRatio: 2 });
         });
       }
+    } else {
+      const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+      source.setData(features);
     }
+  }, [map, rooms]);
 
-    return () => {
-      try {
-        if (map.getLayer(fillId)) map.removeLayer(fillId);
-        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-      } catch (err) {
-        console.warn('Error cleaning up saved room layers:', err);
-      }
-    };
-  }, [map, rooms, isDrawing]);
-
-  // Render or update labels dynamically on zoom
+  // Render and update labels
   useEffect(() => {
-    if (isDrawing || rooms.length === 0) return;
-
-    const sourceId = 'saved-room-labels';
-    const labelId = 'saved-rooms-label';
-    const MIN_AREA_METERS = 10;
-    const TRUNCATE_NAME_LENGTH = 10;
+    if (rooms.length === 0) return;
 
     const zoom = map.getZoom();
+    const MIN_AREA_METERS = 10;
+    const TRUNCATE_NAME_LENGTH = 10;
 
     const labelFeatures: FeatureCollection = {
       type: 'FeatureCollection',
@@ -175,8 +167,8 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       }),
     };
 
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, {
+    if (!map.getSource(labelSourceId)) {
+      map.addSource(labelSourceId, {
         type: 'geojson',
         data: labelFeatures,
       });
@@ -184,7 +176,7 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       map.addLayer({
         id: labelId,
         type: 'symbol',
-        source: sourceId,
+        source: labelSourceId,
         layout: {
           'text-field': ['get', 'name'],
           'text-size': 12,
@@ -203,19 +195,10 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         },
       });
     } else {
-      const src = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
-      src.setData(labelFeatures);
+      const source = map.getSource(labelSourceId) as mapboxgl.GeoJSONSource;
+      source.setData(labelFeatures);
     }
-
-    return () => {
-      try {
-        if (map.getLayer(labelId)) map.removeLayer(labelId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-      } catch (err) {
-        console.warn('Error cleaning up room label layer:', err);
-      }
-    };
-  }, [map, rooms, isDrawing, refreshKey]);
+  }, [map, rooms, refreshKey]);
 
   return null;
 }
