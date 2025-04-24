@@ -41,6 +41,7 @@ function InnerMapComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
+  const selectedRoomsRef = useRef<any[]>([]); // Ref to hold the latest selectedRooms for event handlers
 
   const { coords, error } = useUserLocation();
   const { pois, addPOI } = usePOIs();
@@ -54,11 +55,11 @@ function InnerMapComponent() {
   const [selectedBuilding, setSelectedBuilding] = useState<any | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<any | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<number>(0);
-  const [selectedRooms, setSelectedRooms] = useState<any[]>([]);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
   const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
+  const [selectedRooms, setSelectedRooms] = useState<any[]>([]); // State for rooms filtered by floor
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -104,6 +105,22 @@ function InnerMapComponent() {
     loadMapData();
   }, [selectedMap, buildingRefreshKey]);
 
+  // Load all markers for a building
+  useEffect(() => {
+    if (!selectedBuilding) return;
+
+    const loadMarkers = async () => {
+      try {
+        const markers = await getMarkersForBuilding(selectedBuilding.id);
+        setInteriorMarkers(markers);
+      } catch (err) {
+        console.error('Failed to load interior markers:', err);
+      }
+    };
+
+    loadMarkers();
+  }, [selectedBuilding, buildingRefreshKey]);
+
   // Compute and update selected rooms when building or floor changes
   useEffect(() => {
     if (!selectedBuilding || !roomsByBuilding[selectedBuilding.id]) {
@@ -118,21 +135,10 @@ function InnerMapComponent() {
     setSelectedRooms(filtered);
   }, [selectedBuilding, roomsByBuilding, selectedFloor]);
 
-  // Load all markers for a building
+  // Keep a ref to the current selectedRooms for use in closures
   useEffect(() => {
-    if (!selectedBuilding) return;
-  
-    const loadMarkers = async () => {
-      try {
-        const markers = await getMarkersForBuilding(selectedBuilding.id);
-        setInteriorMarkers(markers);
-      } catch (err) {
-        console.error('Failed to load interior markers:', err);
-      }
-    };
-  
-    loadMarkers();
-  }, [selectedBuilding, buildingRefreshKey]);
+    selectedRoomsRef.current = selectedRooms;
+  }, [selectedRooms]);
 
   // Generate available floor numbers from selected building
   useEffect(() => {
@@ -142,11 +148,7 @@ function InnerMapComponent() {
     if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
       const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
       setAvailableFloors(floors);
-      if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
-        const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
-        setAvailableFloors(floors);
-        setSelectedFloor(floors[0]); // Always reset to first available floor
-      }
+      setSelectedFloor(floors[0]); // Always reset to first available floor
     }
   }, [selectedBuilding]);
 
@@ -221,7 +223,7 @@ function InnerMapComponent() {
 
         // Type-safe check to avoid TS18047
         if (props && typeof props.id === 'string') {
-          const room = selectedRooms.find((r) => r.id === props.id);
+          const room = selectedRoomsRef.current.find((r) => r.id === props.id);
           if (room) {
             setSelectedRoom(room);
             return;
@@ -246,7 +248,7 @@ function InnerMapComponent() {
     return () => {
       map.off('click', handleRoomClick);
     };
-  }, [styleReady, isDrawing, selectedRooms]);
+  }, [styleReady, isDrawing]);
 
   // Map click handler to select buildings
   useEffect(() => {
