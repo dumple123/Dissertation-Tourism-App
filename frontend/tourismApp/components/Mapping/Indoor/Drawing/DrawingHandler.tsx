@@ -4,8 +4,81 @@ import { useDrawingContext } from './useDrawing';
 import { useMapStyleReady } from '~/components/Mapping/useMapStyleReady';
 
 export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
-  const { rings, snapTargets, addPoint, completeRing, completeShape, isDrawing } = useDrawingContext();
+  const {
+    rings,
+    snapTargets,
+    addPoint,
+    completeRing,
+    completeShape,
+    isDrawing,
+  } = useDrawingContext();
   const isStyleReady = useMapStyleReady(map);
+
+  const SNAP_THRESHOLD_PX = 12;
+
+  // Compute the nearest point to snap to
+  function getSnappedPoint(
+    lngLat: [number, number],
+    allRings: [number, number][][],
+    project: (pt: [number, number]) => [number, number]
+  ): [number, number] {
+    let pt: [number, number] = lngLat;
+    const pixelPt = project(pt);
+
+    // Snap to vertex
+    for (const ring of allRings) {
+      for (const existing of ring) {
+        const pixelExisting = project(existing);
+        const dx = pixelExisting[0] - pixelPt[0];
+        const dy = pixelExisting[1] - pixelPt[1];
+        const distPx = Math.sqrt(dx * dx + dy * dy);
+        if (distPx < SNAP_THRESHOLD_PX) {
+          return existing;
+        }
+      }
+    }
+
+    // Snap to edge
+    let nearestEdgePoint: [number, number] | null = null;
+    let minEdgeDist = Infinity;
+
+    for (const ring of allRings) {
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i];
+        const b = ring[(i + 1) % ring.length];
+
+        const candidate = nearestPointOnSegment(pt, a, b);
+        const projected = project(candidate);
+        const dx = projected[0] - pixelPt[0];
+        const dy = projected[1] - pixelPt[1];
+        const distPx = Math.sqrt(dx * dx + dy * dy);
+
+        if (distPx < minEdgeDist && distPx < SNAP_THRESHOLD_PX) {
+          nearestEdgePoint = candidate;
+          minEdgeDist = distPx;
+        }
+      }
+    }
+
+    return nearestEdgePoint ?? pt;
+  }
+
+  function nearestPointOnSegment(p: [number, number], a: [number, number], b: [number, number]): [number, number] {
+    const ax = a[0], ay = a[1];
+    const bx = b[0], by = b[1];
+    const px = p[0], py = p[1];
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const apx = px - ax;
+    const apy = py - ay;
+
+    const ab2 = abx * abx + aby * aby;
+    const ap_ab = apx * abx + apy * aby;
+    const t = Math.max(0, Math.min(1, ab2 === 0 ? 0 : ap_ab / ab2));
+
+    return [ax + abx * t, ay + aby * t];
+  }
 
   useEffect(() => {
     if (!map || !isDrawing || !isStyleReady || typeof map.getCanvas !== 'function') return;
@@ -13,6 +86,14 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
     const canvas = map.getCanvas?.();
     if (!canvas) return;
 
+    canvas.style.cursor = 'none';
+
+    const project = (pt: [number, number]): [number, number] => {
+      const projected = map.project({ lng: pt[0], lat: pt[1] });
+      return [projected.x, projected.y] as [number, number];
+    };
+    
+    // Setup cursor preview source + layer
     const initializeCursorPreview = () => {
       if (!map.getSource('cursor-point')) {
         map.addSource('cursor-point', {
@@ -39,75 +120,10 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
 
     initializeCursorPreview();
 
-    const project = (pt: [number, number]) => {
-      const projected = map.project({ lng: pt[0], lat: pt[1] });
-      return [projected.x, projected.y];
-    };
+    const allRings = [...rings, ...snapTargets];
 
-    function nearestPointOnSegment(p: [number, number], a: [number, number], b: [number, number]): [number, number] {
-      const ax = a[0], ay = a[1];
-      const bx = b[0], by = b[1];
-      const px = p[0], py = p[1];
-
-      const abx = bx - ax;
-      const aby = by - ay;
-      const apx = px - ax;
-      const apy = py - ay;
-
-      const ab2 = abx * abx + aby * aby;
-      const ap_ab = apx * abx + apy * aby;
-      const t = Math.max(0, Math.min(1, ab2 === 0 ? 0 : ap_ab / ab2));
-
-      return [ax + abx * t, ay + aby * t];
-    }
-
-    let mouseMoveHandler: ((e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => void) | null = null;
-
-    canvas.style.cursor = 'none';
-
-    mouseMoveHandler = (e) => {
-      let pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
-      const pixelPt = project(pt);
-
-      // Snap to vertex
-      for (const ring of [...rings, ...snapTargets]) {
-        for (const existing of ring) {
-          const pixelExisting = project(existing);
-          const dx = pixelExisting[0] - pixelPt[0];
-          const dy = pixelExisting[1] - pixelPt[1];
-          const distPx = Math.sqrt(dx * dx + dy * dy);
-
-          if (distPx < 10) {
-            pt = existing;
-            break;
-          }
-        }
-      }
-
-      // Snap to edge
-      let nearestEdgePoint: [number, number] | null = null;
-      let minEdgeDist = Infinity;
-      for (const ring of [...rings, ...snapTargets]) {
-        for (let i = 0; i < ring.length - 1; i++) {
-          const a = ring[i];
-          const b = ring[i + 1];
-
-          const candidate = nearestPointOnSegment(pt, a, b);
-          const projected = project(candidate);
-          const dx = projected[0] - pixelPt[0];
-          const dy = projected[1] - pixelPt[1];
-          const distPx = Math.sqrt(dx * dx + dy * dy);
-
-          if (distPx < minEdgeDist && distPx < 10) {
-            nearestEdgePoint = candidate;
-            minEdgeDist = distPx;
-          }
-        }
-      }
-
-      if (nearestEdgePoint) {
-        pt = nearestEdgePoint;
-      }
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
+      const pt = getSnappedPoint([e.lngLat.lng, e.lngLat.lat], allRings, project);
 
       const source = map.getSource('cursor-point') as mapboxgl.GeoJSONSource;
       if (source) {
@@ -125,57 +141,17 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
     };
 
     const handleClick = (e: mapboxgl.MapMouseEvent & mapboxgl.EventData) => {
-      let pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];
       const currentRing = rings[rings.length - 1];
+      const pt = getSnappedPoint([e.lngLat.lng, e.lngLat.lat], allRings, project);
       const pixelPt = project(pt);
 
-      // Snap to vertex
-      for (const ring of [...rings, ...snapTargets]) {
-        for (const existing of ring) {
-          const pixelExisting = project(existing);
-          const dx = pixelExisting[0] - pixelPt[0];
-          const dy = pixelExisting[1] - pixelPt[1];
-          const distPx = Math.sqrt(dx * dx + dy * dy);
-
-          if (distPx < 10) {
-            pt = existing;
-            break;
-          }
-        }
-      }
-
-      // Snap to edge
-      let nearestEdgePoint: [number, number] | null = null;
-      let minEdgeDist = Infinity;
-      for (const ring of [...rings, ...snapTargets]) {
-        for (let i = 0; i < ring.length - 1; i++) {
-          const a = ring[i];
-          const b = ring[i + 1];
-
-          const candidate = nearestPointOnSegment(pt, a, b);
-          const projected = project(candidate);
-          const dx = projected[0] - pixelPt[0];
-          const dy = projected[1] - pixelPt[1];
-          const distPx = Math.sqrt(dx * dx + dy * dy);
-
-          if (distPx < minEdgeDist && distPx < 10) {
-            nearestEdgePoint = candidate;
-            minEdgeDist = distPx;
-          }
-        }
-      }
-
-      if (nearestEdgePoint) {
-        pt = nearestEdgePoint;
-      }
-
       if (currentRing.length > 2 && e.originalEvent.shiftKey) {
-        const pixelFirst = map.project(currentRing[0]);
-        const dx = pixelFirst.x - pixelPt[0];
-        const dy = pixelFirst.y - pixelPt[1];
+        const pixelFirst = project(currentRing[0]);
+        const dx = pixelFirst[0] - pixelPt[0];
+        const dy = pixelFirst[1] - pixelPt[1];
         const distPx = Math.sqrt(dx * dx + dy * dy);
 
-        if (distPx < 10) {
+        if (distPx < SNAP_THRESHOLD_PX) {
           completeRing();
           return;
         }
@@ -192,28 +168,16 @@ export default function DrawingHandler({ map }: { map: mapboxgl.Map }) {
 
     window.addEventListener('keydown', handleKeyDown);
     map.on('click', handleClick);
-    map.on('mousemove', mouseMoveHandler);
+    map.on('mousemove', handleMouseMove);
     canvas.focus();
 
     return () => {
       map.off('click', handleClick);
-      if (mouseMoveHandler) map.off('mousemove', mouseMoveHandler);
+      map.off('mousemove', handleMouseMove);
       window.removeEventListener('keydown', handleKeyDown);
 
       if (map.getLayer('cursor-point-layer')) map.removeLayer('cursor-point-layer');
       if (map.getSource('cursor-point')) map.removeSource('cursor-point');
-
-      const drawingSource = map.getSource('drawing-polygon') as mapboxgl.GeoJSONSource;
-      if (drawingSource) {
-        drawingSource.setData({
-          type: 'Feature',
-          geometry: {
-            type: 'Polygon',
-            coordinates: [[]],
-          },
-          properties: {},
-        });
-      }
 
       canvas.style.cursor = '';
     };

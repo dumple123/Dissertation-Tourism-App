@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { deleteRoom, updateRoom } from '~/api/room';
+import { deleteRoom, updateRoom, getRoomsForBuilding } from '~/api/room';
+import { getBuildingById } from '~/api/building';
 import { useDrawingContext } from '../Drawing/useDrawing';
 
 interface RoomSidebarProps {
@@ -31,7 +32,14 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   onStartEdit,
   topOffset = 360,
 }) => {
-  const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId, resetDrawing } = useDrawingContext();
+  const {
+    setRings,
+    setRoomInfo,
+    setEditingRoomId,
+    resetDrawing,
+    setSnapTargets,
+  } = useDrawingContext();
+
   const [accessible, setAccessible] = useState(room.accessible);
   const [isArea, setIsArea] = useState(room.isArea);
   const [name, setName] = useState(room.name);
@@ -51,14 +59,55 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
     }
   };
 
-  const handleEdit = () => {
-    const coordinates = room.geojson.geometry.coordinates;
-    const transformed = coordinates.map((ring: [number, number][]) => ring.slice(0, -1));
+  const handleEdit = async () => {
+    try {
+      // Clear current drawing state
+      resetDrawing();
 
-    resetDrawing();
-    setRings(transformed);
-    setRoomInfo({ name: room.name, floor: room.floor, buildingId: room.buildingId });
-    setEditingRoomId(room.id);
+      // Fetch building outline
+      const building = await getBuildingById(room.buildingId);
+      const buildingCoords: [number, number][][] = building?.geojson?.geometry?.coordinates || [];
+
+      // Fetch all rooms in the building except this one
+      const rooms = await getRoomsForBuilding(room.buildingId);
+
+      const roomRings = rooms
+        .filter((r: { id: string; geojson: { geometry: { coordinates: [number, number][][] } } }) => r.id !== room.id)
+        .map((r: { geojson: { geometry: { coordinates: [number, number][][] } } }) =>
+          r.geojson?.geometry?.coordinates?.[0]
+        )
+        .filter(
+          (ring: unknown): ring is [number, number][] =>
+            Array.isArray(ring) &&
+            ring.length > 2 &&
+            Array.isArray(ring[0]) &&
+            typeof ring[0][0] === 'number' &&
+            typeof ring[0][1] === 'number'
+        );
+
+      // Combine and normalize snap targets
+      const allSnapTargets = [...buildingCoords, ...roomRings].map((ring: [number, number][]) =>
+        ring.length > 1 &&
+        ring[0][0] === ring[ring.length - 1][0] &&
+        ring[0][1] === ring[ring.length - 1][1]
+          ? ring.slice(0, -1)
+          : ring
+      );
+
+      // Set snap targets before editing begins
+      setSnapTargets(allSnapTargets);
+
+      // Prepare the current room's geometry
+      const coordinates = room.geojson.geometry.coordinates;
+      const transformed = coordinates.map((ring: [number, number][]) => ring.slice(0, -1));
+
+      setRings(transformed);
+      setRoomInfo({ name: room.name, floor: room.floor, buildingId: room.buildingId });
+      setEditingRoomId(room.id);
+    } catch (err) {
+      console.error('Failed to start editing:', err);
+      alert('Failed to load geometry for editing.');
+    }
   };
 
   const handleToggle = async (field: 'accessible' | 'isArea', value: boolean) => {
@@ -118,6 +167,7 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
           }}
         />
       </label>
+
       <button
         onClick={handleNameSave}
         disabled={isSavingName}
