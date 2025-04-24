@@ -143,12 +143,13 @@ export default function ImageManipulator({
         src={imageUrl}
         alt="floor"
         style={{
-          width: '100%',
-          height: '100%',
-          userSelect: 'none',
-          pointerEvents: 'none',
+            width: '100%',
+            height: '100%',
+            opacity: 0.4, 
+            userSelect: 'none',
+            pointerEvents: 'none',
         }}
-      />
+        />
 
       {/* Resize Handle (bottom-right corner) */}
       {!disabled && (
