@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { FeatureCollection } from 'geojson';
+import area from '@turf/area';
+import { feature as turfFeature } from '@turf/helpers';
 import { useDrawingContext } from '../Drawing/useDrawing';
 
 interface Props {
@@ -14,7 +16,7 @@ interface Props {
       type: 'Feature';
       geometry: {
         type: 'Polygon';
-        coordinates: [number, number][][];
+        coordinates: [number, number][][]; // Polygon with outer ring only
       };
       properties: any;
     };
@@ -23,50 +25,44 @@ interface Props {
 
 export default function SavedRoomsRenderer({ map, rooms }: Props) {
   const { isDrawing } = useDrawingContext();
+  const [refreshKey, setRefreshKey] = useState(0);
 
+  // Trigger label refresh on zoom change
   useEffect(() => {
-    // Hide saved rooms while in drawing mode
+    const update = () => setRefreshKey((n) => n + 1);
+    map.on('zoom', update);
+    return () => {
+      map.off('zoom', update);
+    };
+  }, [map]);
+
+  // Render static room shapes (fill and outline)
+  useEffect(() => {
     if (isDrawing || rooms.length === 0) return;
 
     const sourceId = 'saved-rooms';
     const fillId = 'saved-rooms-fill';
     const outlineId = 'saved-rooms-outline';
-    const labelId = 'saved-rooms-label'; // Symbol layer for room names
 
-    // Convert rooms to GeoJSON FeatureCollection
-    const features = rooms
-      .map((r) => ({
+    const staticFeatures: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: rooms.map((r) => ({
         ...r.geojson,
+        type: 'Feature' as const,
         properties: {
-          ...r.geojson.properties,
           id: r.id,
-          name: r.name,
           floor: r.floor,
           buildingId: r.buildingId,
         },
-      }))
-      .filter((f) => f && f.type === 'Feature');
-
-    const featureCollection: FeatureCollection = {
-      type: 'FeatureCollection',
-      features,
+      })),
     };
 
-    const addLayers = () => {
-      // If source exists, update data
-      if (map.getSource(sourceId)) {
-        const src = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
-        src.setData(featureCollection);
-        return;
-      }
-
-      // Add source for saved rooms
+    if (!map.getSource(sourceId)) {
       map.addSource(sourceId, {
         type: 'geojson',
-        data: featureCollection,
+        data: staticFeatures,
       });
 
-      // Fill layer
       map.addLayer({
         id: fillId,
         type: 'fill',
@@ -77,7 +73,6 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         },
       });
 
-      // Outline layer
       map.addLayer({
         id: outlineId,
         type: 'line',
@@ -87,8 +82,69 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           'line-width': 1.5,
         },
       });
+    }
 
-      // Label layer for room names
+    return () => {
+      try {
+        if (map.getLayer(fillId)) map.removeLayer(fillId);
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+      } catch (err) {
+        console.warn('Error cleaning up saved room layers:', err);
+      }
+    };
+  }, [map, rooms, isDrawing]);
+
+  // Render or update labels dynamically on zoom
+  useEffect(() => {
+    if (isDrawing || rooms.length === 0) return;
+
+    const sourceId = 'saved-room-labels';
+    const labelId = 'saved-rooms-label';
+    const MIN_AREA_METERS = 10;
+    const TRUNCATE_NAME_LENGTH = 10;
+
+    const zoom = map.getZoom();
+
+    const labelFeatures: FeatureCollection = {
+      type: 'FeatureCollection',
+      features: rooms.map((r) => {
+        const turf = turfFeature(r.geojson.geometry);
+        const roomArea = area(turf);
+
+        const minZoomToShowLabel =
+          roomArea < 20 ? 20 :
+          roomArea < 40 ? 19 :
+          roomArea < 80 ? 18 :
+          roomArea < 150 ? 17 :
+          16;
+
+        let label = r.name;
+        if (zoom < minZoomToShowLabel || roomArea < MIN_AREA_METERS) {
+          label = '';
+        } else if (roomArea < 40 && label.length > TRUNCATE_NAME_LENGTH) {
+          label = label.slice(0, TRUNCATE_NAME_LENGTH - 1) + '…';
+        }
+
+        return {
+          type: 'Feature' as const,
+          geometry: r.geojson.geometry,
+          properties: {
+            id: r.id,
+            name: label,
+            floor: r.floor,
+            buildingId: r.buildingId,
+          },
+        };
+      }),
+    };
+
+    if (!map.getSource(sourceId)) {
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: labelFeatures,
+      });
+
       map.addLayer({
         id: labelId,
         type: 'symbol',
@@ -96,7 +152,13 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
         layout: {
           'text-field': ['get', 'name'],
           'text-size': 12,
+          'text-max-width': 6,
           'text-anchor': 'center',
+          'text-justify': 'center',
+          'text-offset': [0, 0],
+          'text-allow-overlap': false,
+          'symbol-placement': 'point',
+          'symbol-avoid-edges': true,
         },
         paint: {
           'text-color': '#000',
@@ -104,26 +166,20 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           'text-halo-width': 1.5,
         },
       });
-    };
-
-    if (!map.isStyleLoaded()) {
-      map.once('style.load', addLayers);
     } else {
-      addLayers();
+      const src = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
+      src.setData(labelFeatures);
     }
 
     return () => {
-      // Cleanup on unmount or rerender
       try {
-        if (map.getLayer(fillId)) map.removeLayer(fillId);
-        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
         if (map.getLayer(labelId)) map.removeLayer(labelId);
         if (map.getSource(sourceId)) map.removeSource(sourceId);
       } catch (err) {
-        console.warn('Error cleaning up saved room layers:', err);
+        console.warn('Error cleaning up room label layer:', err);
       }
     };
-  }, [map, rooms, isDrawing]);
+  }, [map, rooms, isDrawing, refreshKey]);
 
   return null;
 }
