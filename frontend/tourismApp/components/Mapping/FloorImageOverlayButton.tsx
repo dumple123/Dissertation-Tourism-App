@@ -33,32 +33,43 @@ export default function FloorImageOverlayButton({ map }: Props) {
     map: mapboxgl.Map,
     center: LngLat,
     scaleX: number,
-    scaleY: number
+    scaleY: number,
+    rotation: number
   ) => {
     const centerPx = map.project(center);
     const width = 100 * scaleX;
     const height = 100 * scaleY;
-
-    const topLeft = map.unproject([centerPx.x - width / 2, centerPx.y - height / 2]);
-    const topRight = map.unproject([centerPx.x + width / 2, centerPx.y - height / 2]);
-    const bottomRight = map.unproject([centerPx.x + width / 2, centerPx.y + height / 2]);
-    const bottomLeft = map.unproject([centerPx.x - width / 2, centerPx.y + height / 2]);
-
-    const coords: LngLat[] = [
-      [topLeft.lng, topLeft.lat],
-      [topRight.lng, topRight.lat],
-      [bottomRight.lng, bottomRight.lat],
-      [bottomLeft.lng, bottomLeft.lat],
+  
+    // Get corner points in pixel space
+    const cornersPx = [
+      [-width / 2, -height / 2], // top-left
+      [width / 2, -height / 2],  // top-right
+      [width / 2, height / 2],   // bottom-right
+      [-width / 2, height / 2],  // bottom-left
     ];
-
+  
+    // Apply rotation (around center)
+    const angle = (rotation * Math.PI) / 180;
+    const rotated = cornersPx.map(([x, y]) => {
+      const rx = x * Math.cos(angle) - y * Math.sin(angle);
+      const ry = x * Math.sin(angle) + y * Math.cos(angle);
+      return [centerPx.x + rx, centerPx.y + ry];
+    });
+  
+    // Convert back to geographic coordinates
+    const coords: LngLat[] = rotated.map(([x, y]) => {
+      const { lng, lat } = map.unproject([x, y]);
+      return [lng, lat];
+    });
+  
     removeMapImageOverlay();
-
+  
     map.addSource('floor-overlay', {
       type: 'image',
       url: imageUrl,
       coordinates: coords,
     });
-
+  
     map.addLayer({
       id: 'floor-overlay-layer',
       source: 'floor-overlay',
@@ -88,7 +99,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
       setPinned(true);
 
       removeMapImageOverlay();
-      applyStaticImageOverlay(url, map, newCenter, 1, 1);
+      applyStaticImageOverlay(url, map, newCenter, 1, 1, 0);
     };
     img.src = url;
   };
@@ -100,7 +111,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
     setPinned(newPinned);
 
     if (newPinned) {
-      applyStaticImageOverlay(imageUrl, map, center, scaleX, scaleY);
+      applyStaticImageOverlay(imageUrl, map, center, scaleX, scaleY, rotation);
     } else {
       removeMapImageOverlay();
     }

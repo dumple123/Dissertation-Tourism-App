@@ -33,6 +33,7 @@ export default function ImageManipulator({
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
   const dragStartCenterPx = useRef<{ x: number; y: number } | null>(null);
+  const [, forceUpdate] = useState(0);
 
   const getCenterPixels = () => map.project(center);
 
@@ -40,6 +41,18 @@ export default function ImageManipulator({
     const lngLat = map.unproject([x, y]);
     onChange({ center: [lngLat.lng, lngLat.lat], scaleX, scaleY, rotation });
   };
+
+  useEffect(() => {
+    if (disabled) return;
+  
+    const update = () => forceUpdate((n) => n + 1);
+    map.on('move', update);
+    map.on('zoom', update);
+    return () => {
+      map.off('move', update);
+      map.off('zoom', update);
+    };
+  }, [map, disabled]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (disabled) return;
@@ -286,4 +299,4 @@ function cornerZone(
     case 'bottom-right':
       return { ...common, right: -half, bottom: -half, cursor: 'nwse-resize' };
   }
-}
+} 
