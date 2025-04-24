@@ -29,7 +29,7 @@ import RoomSidebar from '~/components/Mapping/Indoor/Rooms/RoomSidebar';
 import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/CreateMarkerButton';
 import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/SavedMarkerRenderer';
-import FloorImageOverlayButton from '~/components/Mapping/FloorImageOverlayButton';
+import FloorImageOverlayButton from '~/components/Mapping/Indoor/Stencil/FloorImageOverlayButton';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
