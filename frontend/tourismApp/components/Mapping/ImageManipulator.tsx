@@ -29,6 +29,7 @@ export default function ImageManipulator({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const dragStartCenterPx = useRef<{ x: number; y: number } | null>(null); // NEW
 
   const getCenterPixels = () => {
     return map.project(center);
@@ -44,21 +45,26 @@ export default function ImageManipulator({
     if (disabled) return;
     e.stopPropagation();
     dragStart.current = { x: e.clientX, y: e.clientY };
+    dragStartCenterPx.current = getCenterPixels(); // store original center
     setIsDragging(true);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !dragStart.current) return;
+    if (!isDragging || !dragStart.current || !dragStartCenterPx.current) return;
+
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
-    const centerPx = getCenterPixels();
-    updateCenterFromPixel(centerPx.x + dx, centerPx.y + dy);
-    dragStart.current = { x: e.clientX, y: e.clientY };
+
+    const newX = dragStartCenterPx.current.x + dx;
+    const newY = dragStartCenterPx.current.y + dy;
+
+    updateCenterFromPixel(newX, newY);
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
     dragStart.current = null;
+    dragStartCenterPx.current = null;
   };
 
   // Rotation
@@ -66,19 +72,24 @@ export default function ImageManipulator({
     e.stopPropagation();
     const centerPx = getCenterPixels();
     const origin = { x: centerPx.x, y: centerPx.y };
-
+    const start = { x: e.clientX, y: e.clientY };
+    const startAngle = Math.atan2(start.y - origin.y, start.x - origin.x);
+    const initialRotation = rotation;
+  
     const onMove = (moveEvent: MouseEvent) => {
-      const dx = moveEvent.clientX - origin.x;
-      const dy = moveEvent.clientY - origin.y;
-      const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-      onChange({ center, scale, rotation: angle });
+      const current = { x: moveEvent.clientX, y: moveEvent.clientY };
+      const currentAngle = Math.atan2(current.y - origin.y, current.x - origin.x);
+      const angleDelta = ((currentAngle - startAngle) * 180) / Math.PI;
+      const newRotation = initialRotation + angleDelta;
+  
+      onChange({ center, scale, rotation: newRotation });
     };
-
+  
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
-
+  
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   };
@@ -88,8 +99,6 @@ export default function ImageManipulator({
     e.stopPropagation();
     const centerPx = getCenterPixels();
     const origin = { x: centerPx.x, y: centerPx.y };
-    const start = { x: e.clientX, y: e.clientY };
-    const initialScale = scale;
 
     const onMove = (moveEvent: MouseEvent) => {
       const dx = moveEvent.clientX - origin.x;
@@ -143,15 +152,15 @@ export default function ImageManipulator({
         src={imageUrl}
         alt="floor"
         style={{
-            width: '100%',
-            height: '100%',
-            opacity: 0.4, 
-            userSelect: 'none',
-            pointerEvents: 'none',
+          width: '100%',
+          height: '100%',
+          opacity: 0.4,
+          userSelect: 'none',
+          pointerEvents: 'none',
         }}
-        />
+      />
 
-      {/* Resize Handle (bottom-right corner) */}
+      {/* Resize Handle */}
       {!disabled && (
         <div
           onMouseDown={handleResize}
@@ -169,7 +178,7 @@ export default function ImageManipulator({
         />
       )}
 
-      {/* Rotate Handle (top-center) */}
+      {/* Rotate Handle */}
       {!disabled && (
         <div
           onMouseDown={handleRotate}
