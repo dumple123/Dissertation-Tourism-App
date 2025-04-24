@@ -15,6 +15,7 @@ interface ImageManipulatorProps {
     rotation: number;
   }) => void;
   disabled?: boolean;
+  opacity?: number;
 }
 
 export default function ImageManipulator({
@@ -26,6 +27,7 @@ export default function ImageManipulator({
   rotation,
   onChange,
   disabled = false,
+  opacity,
 }: ImageManipulatorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -190,7 +192,7 @@ export default function ImageManipulator({
         style={{
           width: '100%',
           height: '100%',
-          opacity: 0.4,
+          opacity: opacity ?? 0.4,
           userSelect: 'none',
           pointerEvents: 'none',
         }}

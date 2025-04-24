@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import ImageManipulator from './ImageManipulator';
 
@@ -15,6 +15,13 @@ export default function FloorImageOverlayButton({ map }: Props) {
   const [scaleY, setScaleY] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
   const [pinned, setPinned] = useState<boolean>(false);
+  const [opacity, setOpacity] = useState<number>(0.4); // NEW
+
+  useEffect(() => {
+    if (!pinned || !map.getLayer('floor-overlay-layer')) return;
+  
+    map.setPaintProperty('floor-overlay-layer', 'raster-opacity', opacity);
+  }, [opacity, pinned, map]);
 
   const removeMapImageOverlay = () => {
     if (map.getLayer('floor-overlay-layer')) map.removeLayer('floor-overlay-layer');
@@ -57,7 +64,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
       source: 'floor-overlay',
       type: 'raster',
       paint: {
-        'raster-opacity': 0.7,
+        'raster-opacity': opacity,
       },
     });
   };
@@ -101,7 +108,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
 
   return (
     <>
-      {/* Upload & Pin Controls */}
+      {/* Upload & Controls */}
       <div style={{
         position: 'absolute',
         top: 20,
@@ -113,18 +120,31 @@ export default function FloorImageOverlayButton({ map }: Props) {
         borderRadius: 8,
         boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
         display: 'flex',
-        gap: 8,
-        alignItems: 'center'
+        gap: 12,
+        alignItems: 'center',
       }}>
         <input type="file" accept="image/png" onChange={handleUpload} />
         {imageUrl && (
-          <button onClick={togglePinned}>
-            {pinned ? 'Unpin Image' : 'Pin Image'}
-          </button>
+          <>
+            <button onClick={togglePinned}>
+              {pinned ? 'Unpin Image' : 'Pin Image'}
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              Opacity
+              <input
+                type="range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={opacity}
+                onChange={(e) => setOpacity(parseFloat(e.target.value))}
+              />
+            </label>
+          </>
         )}
       </div>
 
-      {/* HTML Overlay Manipulator (only when unpinned) */}
+      {/* Editable Image Manipulator */}
       {imageUrl && center && !pinned && (
         <ImageManipulator
           map={map}
@@ -134,6 +154,7 @@ export default function FloorImageOverlayButton({ map }: Props) {
           scaleY={scaleY}
           rotation={rotation}
           disabled={false}
+          opacity={opacity} // pass opacity to image
           onChange={({ center, scaleX, scaleY, rotation }) => {
             setCenter(center as LngLat);
             setScaleX(scaleX);
