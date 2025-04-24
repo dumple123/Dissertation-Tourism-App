@@ -12,7 +12,7 @@ interface RoomSidebarProps {
       type: 'Feature';
       geometry: {
         type: 'Polygon';
-        coordinates: [number, number][][],
+        coordinates: [number, number][][];
       };
       properties: any;
     };
@@ -34,6 +34,8 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   const { setRings, setIsDrawing, setRoomInfo, setEditingRoomId, resetDrawing } = useDrawingContext();
   const [accessible, setAccessible] = useState(room.accessible);
   const [isArea, setIsArea] = useState(room.isArea);
+  const [name, setName] = useState(room.name);
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const handleDelete = async () => {
     const confirmDelete = confirm('Are you sure you want to delete this room?');
@@ -52,8 +54,8 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   const handleEdit = () => {
     const coordinates = room.geojson.geometry.coordinates;
     const transformed = coordinates.map((ring: [number, number][]) => ring.slice(0, -1));
-  
-    resetDrawing(); 
+
+    resetDrawing();
     setRings(transformed);
     setRoomInfo({ name: room.name, floor: room.floor, buildingId: room.buildingId });
     setEditingRoomId(room.id);
@@ -62,15 +64,25 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
   const handleToggle = async (field: 'accessible' | 'isArea', value: boolean) => {
     try {
       await updateRoom(room.id, { [field]: value });
-  
       if (field === 'accessible') setAccessible(value);
       if (field === 'isArea') setIsArea(value);
-  
-      // Trigger renderer refresh
-      onDeleteSuccess(); 
+      onDeleteSuccess();
     } catch (err) {
       console.error(`Failed to update room ${field}:`, err);
       alert(`Failed to update room ${field}`);
+    }
+  };
+
+  const handleNameSave = async () => {
+    try {
+      setIsSavingName(true);
+      await updateRoom(room.id, { name });
+      onDeleteSuccess();
+    } catch (err) {
+      console.error('Failed to update room name:', err);
+      alert('Failed to update room name');
+    } finally {
+      setIsSavingName(false);
     }
   };
 
@@ -92,8 +104,35 @@ const RoomSidebar: React.FC<RoomSidebarProps> = ({
     >
       <h3 style={{ marginTop: 0, fontSize: 18, marginBottom: 16 }}>Room Details</h3>
 
-      <p><strong>Name:</strong> {room.name}</p>
-      <p><strong>Floor:</strong> {room.floor}</p>
+      <label style={{ display: 'block', marginBottom: 8 }}>
+        <strong>Name:</strong>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          style={{
+            width: '100%',
+            padding: '6px',
+            marginTop: '4px',
+            boxSizing: 'border-box',
+          }}
+        />
+      </label>
+      <button
+        onClick={handleNameSave}
+        disabled={isSavingName}
+        style={{
+          padding: '6px 10px',
+          backgroundColor: '#2a9d8f',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          marginBottom: '12px',
+        }}
+      >
+        Save Name
+      </button>
 
       <label style={{ display: 'block', marginBottom: 8 }}>
         <input
