@@ -15,11 +15,13 @@ import loginRouter from "./routes/login.js";        // login route
 import signupRouter from "./routes/signup.js";      // signup route
 import refreshToken from "./utils/refreshToken.js"; // refresh JWT token
 
-// New indoor mapping routes
+// Mapping routes
 import mapRouter from "./routes/map.js";             // indoor maps route
 import buildingRouter from "./routes/building.js";   // buildings route
 import roomRouter from "./routes/room.js";           // rooms route 
 import markerRouter from "./routes/interiorMarker.js"; // Interior Marker Routes
+import poiRoutes from './routes/pois.js';
+import poiProgressRoutes from './routes/poiProgress.js';
 
 // Public Routes (No Authentication required)
 app.use("/login", loginRouter);
@@ -34,11 +36,14 @@ app.use("/protected-route", verifyToken, (req, res) => {
   });
 });
 
-// Indoor mapping routes (authentication required)
+
+// mapping routes (authentication required)
 app.use("/api/maps", verifyToken, mapRouter);
 app.use("/api/buildings", verifyToken, buildingRouter);
 app.use("/api/rooms", verifyToken, roomRouter);
 app.use("/api/markers", verifyToken, markerRouter);
+app.use('/api/pois', poiRoutes);
+app.use('/api/poi-progress', poiProgressRoutes);
 
 // Start server
 server.listen(3000, '0.0.0.0', function () {

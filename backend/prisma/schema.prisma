@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,46 +11,48 @@ datasource db {
 }
 
 model User {
-  id       String   @id @default(uuid())
-  email    String   @unique
-  username String   @unique
-  password String
-  createdAt DateTime @default(now())
+  id          String              @id @default(uuid())
+  email       String              @unique
+  username    String              @unique
+  password    String
+  createdAt   DateTime            @default(now())
+  poiProgress User_POI_Progress[] // Tracks user's discovered POIs
 }
 
 model Map {
   id        String     @id @default(uuid())
   name      String
   buildings Building[]
+  pois      POI[] // Map has many POIs
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }
 
 model Building {
-  id           String   @id @default(uuid())
-  name         String
-  map          Map      @relation(fields: [mapId], references: [id])
-  mapId        String
-  bottomFloor  Int @default(0)      // e.g., -2 if B2 is the lowest
-  numFloors    Int      // e.g., 5 if it goes from B2 (-2) to 2nd floor (2)
-  geojson      Json
-  rooms        Room[]   // One-to-many relationship
-  interiorMarkers InteriorMarker[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String           @id @default(uuid())
+  name            String
+  map             Map              @relation(fields: [mapId], references: [id])
+  mapId           String
+  bottomFloor     Int              @default(0) // e.g., -2 if B2 is lowest
+  numFloors       Int
+  geojson         Json
+  rooms           Room[] // Building has many Rooms
+  interiorMarkers InteriorMarker[] // Building has many InteriorMarkers
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model Room {
-  id           String   @id @default(uuid())
-  name         String
-  floor        Int
-  building     Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  buildingId   String
-  geojson      Json
-  accessible   Boolean  @default(false) 
-  isArea       Boolean  @default(false) 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id         String   @id @default(uuid())
+  name       String
+  floor      Int
+  building   Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  buildingId String
+  geojson    Json
+  accessible Boolean  @default(false)
+  isArea     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model InteriorMarker {
@@ -68,4 +67,28 @@ model InteriorMarker {
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model POI {
+  id           String              @id @default(uuid())
+  map          Map                 @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  mapId        String
+  name         String
+  description  String?
+  geojson      Json
+  hidden       Boolean             @default(false)
+  userProgress User_POI_Progress[] // Who visited this POI
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model User_POI_Progress {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  poi       POI      @relation(fields: [poiId], references: [id], onDelete: Cascade)
+  poiId     String
+  visitedAt DateTime @default(now())
+
+  @@unique([userId, poiId]) // Prevent duplicate visit records
 }
