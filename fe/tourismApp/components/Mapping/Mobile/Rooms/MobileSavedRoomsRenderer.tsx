@@ -1,6 +1,8 @@
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
 import type { FeatureCollection, Feature } from 'geojson';
+import area from '@turf/area';
+import { feature as turfFeature } from '@turf/helpers';
 
 interface Room {
   id: string;
@@ -17,24 +19,36 @@ interface Props {
 }
 
 export default function MobileSavedRoomsRenderer({ rooms }: Props) {
-  const roomFeatures: Feature[] = rooms.map((r) => ({
-    ...r.geojson,
-    properties: {
-      ...(r.geojson.properties ?? {}),
-      id: r.id,
-      name: r.name,
-      floor: r.floor,
-      accessible: r.accessible,
-      isArea: r.isArea,
-    },
-  }));
+  const processedFeatures: Feature[] = rooms.map((r) => {
+    const turf = turfFeature(r.geojson.geometry);
+    const roomArea = area(turf); // in square meters
+
+    const TRUNCATE_LENGTH = roomArea < 40 ? 8 : 20;
+    let label = r.name;
+
+    if (label.length > TRUNCATE_LENGTH) {
+      label = label.slice(0, TRUNCATE_LENGTH - 1) + '…';
+    }
+
+    return {
+      ...r.geojson,
+      properties: {
+        ...(r.geojson.properties ?? {}),
+        id: r.id,
+        name: label,
+        floor: r.floor,
+        accessible: r.accessible,
+        isArea: r.isArea,
+      },
+    };
+  });
 
   const featureCollection: FeatureCollection = {
     type: 'FeatureCollection',
-    features: roomFeatures,
+    features: processedFeatures,
   };
 
-  if (roomFeatures.length === 0) return null;
+  if (processedFeatures.length === 0) return null;
 
   return (
     <MapboxGL.ShapeSource id="mobile-saved-rooms" shape={featureCollection}>
@@ -65,6 +79,7 @@ export default function MobileSavedRoomsRenderer({ rooms }: Props) {
       {/* Label layer for room names */}
       <MapboxGL.SymbolLayer
         id="mobile-saved-rooms-label"
+        minZoomLevel={16}
         style={{
           textField: ['get', 'name'],
           textSize: 12,
@@ -73,9 +88,10 @@ export default function MobileSavedRoomsRenderer({ rooms }: Props) {
           textHaloWidth: 1,
           textAllowOverlap: false,
           textAnchor: 'center',
+          textJustify: 'center',
+          textMaxWidth: 6,
         }}
       />
     </MapboxGL.ShapeSource>
   );
 }
-
