@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
-import { markerTypes, MarkerType } from '~/components/Mapping/Indoor/Markers/markerTypes';
+import { markerTypesMobile, MarkerType } from './markerTypesMobile';
 
 interface Marker {
   id: string;
@@ -23,29 +23,44 @@ export default function MobileInteriorMarkersRenderer({ markers, selectedFloor }
   return (
     <>
       {visibleMarkers.map((marker) => {
-        const { id, coordinates, label, type, accessible } = marker;
-        const markerInfo = markerTypes[type as MarkerType] || markerTypes.other;
+        const { id, coordinates, type, accessible } = marker;
+        const markerInfo = markerTypesMobile[type as MarkerType] || markerTypesMobile.other;
+        const Icon = markerInfo.Component;
 
         return (
-            <MapboxGL.PointAnnotation
-            key={id}
-            id={id}
-            coordinate={coordinates}
-          >
+          <MapboxGL.PointAnnotation key={id} id={id} coordinate={coordinates}>
             <View
-              style={{
-                backgroundColor: accessible ? '#2A9D8F' : '#F4A261',
-                borderRadius: 20,
-                padding: 6,
-              }}
+              style={[
+                styles.markerContainer,
+                { backgroundColor: accessible ? '#2A9D8F' : '#F4A261' },
+              ]}
             >
-              <Text style={{ fontSize: 14 }}>{markerInfo.fallbackEmoji}</Text>
+              {Icon ? (
+                <Icon width={18} height={18} />
+              ) : (
+                <Text style={styles.fallbackText}>
+                  {markerInfo.fallbackEmoji ?? '❓'}
+                </Text>
+              )}
             </View>
-          
-            <MapboxGL.Callout title={label || markerInfo.label} />
           </MapboxGL.PointAnnotation>
         );
       })}
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  markerContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: 'white',
+    borderWidth: 2,
+  },
+  fallbackText: {
+    fontSize: 14,
+  },
+});
