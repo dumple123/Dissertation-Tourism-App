@@ -11,11 +11,13 @@ interface Building {
 interface Props {
   buildings: Building[];
   selectedFloor?: number;
+  onBuildingPress?: (buildingId: string) => void;
 }
 
 const MobileSavedBuildingsRenderer: React.FC<Props> = ({
   buildings,
   selectedFloor,
+  onBuildingPress,
 }) => {
   const filteredFeatures: Feature[] = buildings
     .filter((b) => {
@@ -40,7 +42,16 @@ const MobileSavedBuildingsRenderer: React.FC<Props> = ({
   if (filteredFeatures.length === 0) return null;
 
   return (
-    <MapboxGL.ShapeSource id="mobile-saved-buildings" shape={featureCollection}>
+    <MapboxGL.ShapeSource
+      id="mobile-saved-buildings"
+      shape={featureCollection}
+      onPress={(e) => {
+        const feature = e.features?.[0];
+        if (feature?.properties?.id) {
+          onBuildingPress?.(feature.properties.id); // pass id back to parent
+        }
+      }}
+    >
       <MapboxGL.FillLayer
         id="mobile-saved-buildings-fill"
         style={{

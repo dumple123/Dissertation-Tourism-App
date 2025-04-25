@@ -2,14 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import Constants from 'expo-constants';
+import { router } from 'expo-router';
 
-// Utility imports
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
-import MapSelectorModal from './Mobile/MapSelectorModal'; 
+import MapSelectorModal from './Mobile/MapSelectorModal';
+import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 MapboxGL.setTelemetryEnabled(false);
@@ -19,22 +20,51 @@ interface Map {
   name: string;
 }
 
+interface Building {
+  id: string;
+  name: string;
+  geojson: any;
+  bottomFloor: number;
+  numFloors: number;
+}
+
 export default function MapViewComponent() {
   const { coords, error, heading } = useUserLocation();
   const cameraRef = useRef<MapboxGL.Camera>(null);
+  const mapRef = useRef<MapboxGL.MapView>(null);
   const { pois } = usePOIs();
 
   const [selectedMap, setSelectedMap] = useState<Map | null>(null);
   const [showModal, setShowModal] = useState(Platform.OS !== 'web');
+  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
+  const [availableFloors, setAvailableFloors] = useState<number[]>([]);
+  const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
+
+  const mapId = selectedMap?.id ?? null;
+  const { buildings } = useBuildings(mapId);
 
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
     setShowModal(false);
   };
 
-  // Conditionally load buildings by mapId (only once selected)
-  const mapId = selectedMap?.id ?? null;
-  const { buildings } = useBuildings(mapId);
+  const handleModalCloseToHome = () => {
+    router.replace('/');
+  };
+
+  useEffect(() => {
+    if (selectedBuilding) {
+      const { bottomFloor, numFloors } = selectedBuilding;
+      if (typeof bottomFloor === 'number' && typeof numFloors === 'number') {
+        const floors = Array.from({ length: numFloors }, (_, i) => bottomFloor + i);
+        setAvailableFloors(floors);
+        setSelectedFloor((prev) => (prev !== null && floors.includes(prev) ? prev : floors[0]));
+      }
+    } else {
+      setAvailableFloors([]);
+      setSelectedFloor(null);
+    }
+  }, [selectedBuilding]);
 
   useEffect(() => {
     requestLocationPermission();
@@ -42,29 +72,35 @@ export default function MapViewComponent() {
 
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView style={styles.map}>
+      <MapboxGL.MapView ref={mapRef} style={styles.map}>
         <MapboxGL.Camera
           ref={cameraRef}
           zoomLevel={14}
           centerCoordinate={coords ?? [-1.615, 54.978]}
         />
 
-        {/* Render saved buildings for selected map */}
-        {mapId && <MobileSavedBuildingsRenderer buildings={buildings} />}
+        {mapId && (
+          <MobileSavedBuildingsRenderer
+            buildings={buildings}
+            selectedFloor={selectedFloor ?? undefined}
+            onBuildingPress={(id) => {
+              const building = buildings.find((b) => b.id === id);
+              if (building) {
+                console.log('Tapped building:', building.name);
+                setSelectedBuilding(building);
+              }
+            }}
+          />
+        )}
 
-        {/* User location marker */}
         {coords && (
           <MapboxGL.PointAnnotation id="user-location" coordinate={coords}>
             <Animated.View
-              style={[
-                styles.marker,
-                { transform: [{ rotate: `${heading}deg` }] },
-              ]}
+              style={[styles.marker, { transform: [{ rotate: `${heading}deg` }] }]}
             />
           </MapboxGL.PointAnnotation>
         )}
 
-        {/* POIs */}
         {pois.map((poi) => (
           <MapboxGL.PointAnnotation
             key={poi.id}
@@ -76,19 +112,25 @@ export default function MapViewComponent() {
         ))}
       </MapboxGL.MapView>
 
-      {/* Location error display */}
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Location error: {error}</Text>
         </View>
       )}
 
-      {/* Mobile-only map selection modal */}
       {Platform.OS !== 'web' && (
         <MapSelectorModal
           isVisible={showModal}
-          onClose={() => setShowModal(false)}
+          onClose={handleModalCloseToHome}
           onSelect={handleMapSelect}
+        />
+      )}
+
+      {selectedBuilding && availableFloors.length > 0 && selectedFloor !== null && (
+        <FloorSelector
+          availableFloors={availableFloors}
+          selectedFloor={selectedFloor}
+          onSelect={setSelectedFloor}
         />
       )}
     </View>
