@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 
@@ -7,21 +7,34 @@ import Constants from 'expo-constants';
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
-import { useBuildings } from './Mobile/Buildings/useBuildings'; 
-import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer'; 
+import { useBuildings } from './Mobile/Buildings/useBuildings';
+import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
+import MapSelectorModal from './Mobile/MapSelectorModal'; 
 
-// Set your Mapbox access token from env
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 MapboxGL.setTelemetryEnabled(false);
+
+interface Map {
+  id: string;
+  name: string;
+}
 
 export default function MapViewComponent() {
   const { coords, error, heading } = useUserLocation();
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const { pois } = usePOIs();
 
-  // Define the mapId for filtering buildings by map (update this to use dynamic selection if needed)
-  const mapId = 'your-map-id'; // Replace with actual map ID logic or selection
-  const { buildings } = useBuildings(mapId); // Load buildings scoped to a specific map
+  const [selectedMap, setSelectedMap] = useState<Map | null>(null);
+  const [showModal, setShowModal] = useState(Platform.OS !== 'web');
+
+  const handleMapSelect = (map: Map) => {
+    setSelectedMap(map);
+    setShowModal(false);
+  };
+
+  // Conditionally load buildings by mapId (only once selected)
+  const mapId = selectedMap?.id ?? null;
+  const { buildings } = useBuildings(mapId);
 
   useEffect(() => {
     requestLocationPermission();
@@ -36,10 +49,10 @@ export default function MapViewComponent() {
           centerCoordinate={coords ?? [-1.615, 54.978]}
         />
 
-        {/* Render saved buildings as fill and outline layers */}
-        <MobileSavedBuildingsRenderer buildings={buildings} />
+        {/* Render saved buildings for selected map */}
+        {mapId && <MobileSavedBuildingsRenderer buildings={buildings} />}
 
-        {/* Render user location marker */}
+        {/* User location marker */}
         {coords && (
           <MapboxGL.PointAnnotation id="user-location" coordinate={coords}>
             <Animated.View
@@ -51,7 +64,7 @@ export default function MapViewComponent() {
           </MapboxGL.PointAnnotation>
         )}
 
-        {/* Render POIs from hook */}
+        {/* POIs */}
         {pois.map((poi) => (
           <MapboxGL.PointAnnotation
             key={poi.id}
@@ -63,10 +76,20 @@ export default function MapViewComponent() {
         ))}
       </MapboxGL.MapView>
 
+      {/* Location error display */}
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Location error: {error}</Text>
         </View>
+      )}
+
+      {/* Mobile-only map selection modal */}
+      {Platform.OS !== 'web' && (
+        <MapSelectorModal
+          isVisible={showModal}
+          onClose={() => setShowModal(false)}
+          onSelect={handleMapSelect}
+        />
       )}
     </View>
   );
