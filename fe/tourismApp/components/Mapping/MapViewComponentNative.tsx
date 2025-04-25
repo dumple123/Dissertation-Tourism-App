@@ -8,7 +8,9 @@ import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
+import { useRooms } from './Mobile/Rooms/useRooms';
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
+import MobileSavedRoomsRenderer from './Mobile/Rooms/MobileSavedRoomsRenderer';
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 
@@ -42,6 +44,7 @@ export default function MapViewComponent() {
 
   const mapId = selectedMap?.id ?? null;
   const { buildings } = useBuildings(mapId);
+  const { rooms } = useRooms(selectedBuilding?.id ?? null);
 
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
@@ -55,7 +58,6 @@ export default function MapViewComponent() {
   const handleMapPress = (e: any) => {
     const screenPoint = e.geometry.coordinates;
     console.log('Tapped map at:', screenPoint);
-    // Deselect building if tap didn’t hit one
     setSelectedBuilding(null);
   };
 
@@ -85,6 +87,8 @@ export default function MapViewComponent() {
     requestLocationPermission();
   }, []);
 
+  const filteredRooms = rooms.filter((r) => r.floor === selectedFloor);
+
   return (
     <View style={styles.container}>
       <MapboxGL.MapView ref={mapRef} style={styles.map} onPress={handleMapPress}>
@@ -101,6 +105,10 @@ export default function MapViewComponent() {
             selectedBuildingId={selectedBuilding?.id}
             onBuildingPress={handleBuildingPress}
           />
+        )}
+
+        {selectedBuilding && selectedFloor !== null && (
+          <MobileSavedRoomsRenderer rooms={filteredRooms} />
         )}
 
         {coords && (
