@@ -23,7 +23,7 @@ export default function MobileInteriorMarkersRenderer({
   selectedFloor,
   markerOpacity,
 }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pressedId, setPressedId] = useState<string | null>(null);
 
   const visibleMarkers = markers.filter((m) => m.floor === selectedFloor);
 
@@ -38,7 +38,8 @@ export default function MobileInteriorMarkersRenderer({
           <MapboxGL.PointAnnotation key={id} id={id} coordinate={coordinates}>
             <Animated.View style={{ alignItems: 'center', opacity: markerOpacity }}>
               <Pressable
-                onPress={() => setSelectedId(id)}
+                onPressIn={() => setPressedId(id)}
+                onPressOut={() => setPressedId(null)}
                 style={[
                   styles.markerContainer,
                   {
@@ -53,7 +54,7 @@ export default function MobileInteriorMarkersRenderer({
                 )}
               </Pressable>
 
-              {selectedId === id && !!label && typeof label === 'string' && (
+              {pressedId === id && !!label && typeof label === 'string' && (
                 <View style={styles.callout}>
                   <Text style={styles.calloutText}>{label}</Text>
                 </View>
