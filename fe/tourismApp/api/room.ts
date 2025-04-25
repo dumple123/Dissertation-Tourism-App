@@ -1,6 +1,7 @@
 import { getTokens } from '~/utils/tokenUtils';
+import Constants from 'expo-constants';
 
-const API_BASE = 'http://localhost:3000/api/rooms';
+const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/rooms`;
 
 // Create a new room
 export async function createRoom(data: {

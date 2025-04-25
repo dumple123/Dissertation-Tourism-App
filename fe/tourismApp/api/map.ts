@@ -1,10 +1,13 @@
 import { getTokens } from "../utils/tokenUtils";
+import Constants from "expo-constants";
+
+const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/maps`;
 
 export const createMap = async (name: string) => {
   const { accessToken } = await getTokens();
   if (!accessToken) throw new Error("No token found");
 
-  const res = await fetch("http://localhost:3000/api/maps", {
+  const res = await fetch(API_BASE, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -25,7 +28,7 @@ export const getMaps = async () => {
   const { accessToken } = await getTokens();
   if (!accessToken) throw new Error("No token found");
 
-  const res = await fetch("http://localhost:3000/api/maps", {
+  const res = await fetch(API_BASE, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

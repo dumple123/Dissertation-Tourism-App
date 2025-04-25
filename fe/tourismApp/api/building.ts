@@ -1,6 +1,7 @@
 import { getTokens } from '~/utils/tokenUtils';
+import Constants from 'expo-constants';
 
-const API_BASE = 'http://localhost:3000/api/buildings';
+const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/buildings`;
 
 export async function getBuildingById(id: string) {
   const { accessToken } = await getTokens();

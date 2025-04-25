@@ -1,6 +1,7 @@
 import { getTokens } from '~/utils/tokenUtils';
+import Constants from 'expo-constants';
 
-const API_BASE = 'http://localhost:3000/api/markers';
+const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/markers`;
 
 // Get all markers for a specific building
 export async function getMarkersForBuilding(buildingId: string) {
