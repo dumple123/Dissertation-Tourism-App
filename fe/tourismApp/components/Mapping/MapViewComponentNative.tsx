@@ -9,8 +9,10 @@ import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
+import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
 import MobileSavedRoomsRenderer from './Mobile/Rooms/MobileSavedRoomsRenderer';
+import MobileInteriorMarkersRenderer from './Mobile/InteriorMarkers/MobileInteriorMarkersRenderer';
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 
@@ -45,6 +47,7 @@ export default function MapViewComponent() {
   const mapId = selectedMap?.id ?? null;
   const { buildings } = useBuildings(mapId);
   const { rooms } = useRooms(selectedBuilding?.id ?? null);
+  const { markers } = useInteriorMarkers(selectedBuilding?.id ?? null);
 
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
@@ -88,6 +91,7 @@ export default function MapViewComponent() {
   }, []);
 
   const filteredRooms = rooms.filter((r) => r.floor === selectedFloor);
+  const filteredMarkers = markers.filter((m) => m.floor === selectedFloor);
 
   return (
     <View style={styles.container}>
@@ -108,7 +112,10 @@ export default function MapViewComponent() {
         )}
 
         {selectedBuilding && selectedFloor !== null && (
-          <MobileSavedRoomsRenderer rooms={filteredRooms} />
+          <>
+            <MobileSavedRoomsRenderer rooms={filteredRooms} />
+            <MobileInteriorMarkersRenderer markers={filteredMarkers} selectedFloor={selectedFloor} />
+          </>
         )}
 
         {coords && (
