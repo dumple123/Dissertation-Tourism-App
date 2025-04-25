@@ -1,6 +1,11 @@
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import { saveTokens, getTokens, removeTokens } from "~/utils/tokenUtils";
 import { axiosInstance, setAuthHeader, clearAuthHeader } from "~/api/index";
+
+interface DecodedToken {
+  exp: number; // expiration time (seconds since epoch)
+}
 
 // Attempts to refresh the access token using the refresh token
 const refreshAccessToken = async (refreshToken: string) => {
@@ -26,19 +31,31 @@ const refreshAccessToken = async (refreshToken: string) => {
 export const initializeAuth = async () => {
   const { accessToken, refreshToken } = await getTokens();
 
-  // If we already have a valid access token, use it
   if (accessToken) {
-    setAuthHeader(accessToken);
-    return true;
+    try {
+      const decoded = jwtDecode<DecodedToken>(accessToken);
+      const currentTime = Date.now() / 1000; // current time in seconds
+
+      if (decoded.exp > currentTime) {
+        // Token is still valid
+        setAuthHeader(accessToken);
+        return true;
+      }
+    } catch (error) {
+      console.error("Error decoding access token:", error);
+      // If decoding fails, treat it as invalid
+    }
   }
 
-  // If access token is missing or expired but we have a refresh token, try to refresh
+  // If token expired or no accessToken but we have a refresh token, try refreshing
   if (refreshToken) {
     const newAccessToken = await refreshAccessToken(refreshToken);
-    if (newAccessToken) return true;
+    if (newAccessToken) {
+      return true;
+    }
   }
 
-  // If no valid token is available, return false
+  // No valid token
   return false;
 };
 

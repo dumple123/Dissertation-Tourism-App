@@ -37,8 +37,8 @@ export const saveTokens = async (accessToken: string, refreshToken: string) => {
 };
 
 export const getTokens = async () => {
-  const accessToken = await storage.getItem('accessToken');
-  const refreshToken = await storage.getItem('refreshToken');
+  const accessToken = await storage.getItem('accessToken') ?? null;
+  const refreshToken = await storage.getItem('refreshToken') ?? null;
   return { accessToken, refreshToken };
 };
 
