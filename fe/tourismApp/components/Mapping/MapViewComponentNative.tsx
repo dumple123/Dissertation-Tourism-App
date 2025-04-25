@@ -52,6 +52,21 @@ export default function MapViewComponent() {
     router.replace('/');
   };
 
+  const handleMapPress = (e: any) => {
+    const screenPoint = e.geometry.coordinates;
+    console.log('Tapped map at:', screenPoint);
+    // Deselect building if tap didn’t hit one
+    setSelectedBuilding(null);
+  };
+
+  const handleBuildingPress = (id: string) => {
+    const building = buildings.find((b) => b.id === id);
+    if (building) {
+      console.log('Tapped building:', building.name);
+      setSelectedBuilding(building);
+    }
+  };
+
   useEffect(() => {
     if (selectedBuilding) {
       const { bottomFloor, numFloors } = selectedBuilding;
@@ -72,7 +87,7 @@ export default function MapViewComponent() {
 
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView ref={mapRef} style={styles.map}>
+      <MapboxGL.MapView ref={mapRef} style={styles.map} onPress={handleMapPress}>
         <MapboxGL.Camera
           ref={cameraRef}
           zoomLevel={14}
@@ -83,13 +98,8 @@ export default function MapViewComponent() {
           <MobileSavedBuildingsRenderer
             buildings={buildings}
             selectedFloor={selectedFloor ?? undefined}
-            onBuildingPress={(id) => {
-              const building = buildings.find((b) => b.id === id);
-              if (building) {
-                console.log('Tapped building:', building.name);
-                setSelectedBuilding(building);
-              }
-            }}
+            selectedBuildingId={selectedBuilding?.id}
+            onBuildingPress={handleBuildingPress}
           />
         )}
 

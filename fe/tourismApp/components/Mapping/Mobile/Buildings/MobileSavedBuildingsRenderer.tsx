@@ -11,35 +11,40 @@ interface Building {
 interface Props {
   buildings: Building[];
   selectedFloor?: number;
+  selectedBuildingId?: string;
   onBuildingPress?: (buildingId: string) => void;
 }
 
 const MobileSavedBuildingsRenderer: React.FC<Props> = ({
   buildings,
   selectedFloor,
+  selectedBuildingId,
   onBuildingPress,
 }) => {
-  const filteredFeatures: Feature[] = buildings
-    .filter((b) => {
-      const floor = b.geojson?.properties?.floor;
-      return selectedFloor === undefined || floor === selectedFloor;
-    })
-    .map((b): Feature => ({
+  const features: Feature[] = buildings.map((b) => {
+    const floor = b.geojson?.properties?.floor;
+    const isSelected = b.id === selectedBuildingId;
+
+    return {
       ...b.geojson,
       properties: {
         ...(b.geojson.properties ?? {}),
         id: b.id,
         name: b.name,
+        selected: isSelected,
+        hidden:
+          isSelected &&
+          selectedFloor !== undefined &&
+          floor !== undefined &&
+          floor !== selectedFloor,
       },
-    }))
-    .filter((f) => f && f.type === 'Feature');
+    };
+  });
 
   const featureCollection: FeatureCollection = {
     type: 'FeatureCollection',
-    features: filteredFeatures,
+    features,
   };
-
-  if (filteredFeatures.length === 0) return null;
 
   return (
     <MapboxGL.ShapeSource
@@ -48,22 +53,37 @@ const MobileSavedBuildingsRenderer: React.FC<Props> = ({
       onPress={(e) => {
         const feature = e.features?.[0];
         if (feature?.properties?.id) {
-          onBuildingPress?.(feature.properties.id); // pass id back to parent
+          onBuildingPress?.(feature.properties.id);
         }
       }}
     >
       <MapboxGL.FillLayer
         id="mobile-saved-buildings-fill"
         style={{
-          fillColor: '#E76F51',
-          fillOpacity: 0.2,
+          fillColor: [
+            'case',
+            ['==', ['get', 'selected'], true],
+            '#264653',
+            '#E76F51',
+          ],
+          fillOpacity: [
+            'case',
+            ['==', ['get', 'hidden'], true],
+            0,
+            0.2,
+          ],
         }}
       />
       <MapboxGL.LineLayer
         id="mobile-saved-buildings-outline"
         style={{
           lineColor: '#E76F51',
-          lineWidth: 2,
+          lineWidth: [
+            'case',
+            ['==', ['get', 'hidden'], true],
+            0,
+            2,
+          ],
         }}
       />
     </MapboxGL.ShapeSource>
