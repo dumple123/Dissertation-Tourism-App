@@ -44,6 +44,9 @@ export default function MapViewComponent() {
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
 
+  const [zoomLevel, setZoomLevel] = useState(14);
+  const markerOpacity = useRef(new Animated.Value(0)).current;
+
   const mapId = selectedMap?.id ?? null;
   const { buildings } = useBuildings(mapId);
   const { rooms } = useRooms(selectedBuilding?.id ?? null);
@@ -72,6 +75,19 @@ export default function MapViewComponent() {
     }
   };
 
+  const handleRegionDidChange = (e: any) => {
+    const zoom = e?.properties?.zoomLevel;
+    if (typeof zoom === 'number') {
+      setZoomLevel(zoom);
+  
+      Animated.timing(markerOpacity, {
+        toValue: zoom >= 15.5 ? 1 : 0, 
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
   useEffect(() => {
     if (selectedBuilding) {
       const { bottomFloor, numFloors } = selectedBuilding;
@@ -95,7 +111,12 @@ export default function MapViewComponent() {
 
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView ref={mapRef} style={styles.map} onPress={handleMapPress}>
+      <MapboxGL.MapView
+        ref={mapRef}
+        style={styles.map}
+        onPress={handleMapPress}
+        onRegionDidChange={handleRegionDidChange}
+      >
         <MapboxGL.Camera
           ref={cameraRef}
           zoomLevel={14}
@@ -114,7 +135,14 @@ export default function MapViewComponent() {
         {selectedBuilding && selectedFloor !== null && (
           <>
             <MobileSavedRoomsRenderer rooms={filteredRooms} />
-            <MobileInteriorMarkersRenderer markers={filteredMarkers} selectedFloor={selectedFloor} />
+            
+            {zoomLevel >= 15 && (
+              <MobileInteriorMarkersRenderer
+                markers={filteredMarkers}
+                selectedFloor={selectedFloor}
+                markerOpacity={markerOpacity}
+              />
+            )}
           </>
         )}
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import MapboxGL from '@rnmapbox/maps';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
 import { markerTypesMobile, MarkerType } from './markerTypesMobile';
 
 interface Marker {
@@ -15,9 +15,14 @@ interface Marker {
 interface Props {
   markers: Marker[];
   selectedFloor: number;
+  markerOpacity: Animated.Value;
 }
 
-export default function MobileInteriorMarkersRenderer({ markers, selectedFloor }: Props) {
+export default function MobileInteriorMarkersRenderer({
+  markers,
+  selectedFloor,
+  markerOpacity,
+}: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const visibleMarkers = markers.filter((m) => m.floor === selectedFloor);
@@ -30,8 +35,8 @@ export default function MobileInteriorMarkersRenderer({ markers, selectedFloor }
         const Icon = markerInfo.Component;
 
         return (
-            <MapboxGL.PointAnnotation key={id} id={id} coordinate={coordinates}>
-            <View style={{ alignItems: 'center' }}>
+          <MapboxGL.PointAnnotation key={id} id={id} coordinate={coordinates}>
+            <Animated.View style={{ alignItems: 'center', opacity: markerOpacity }}>
               <Pressable
                 onPress={() => setSelectedId(id)}
                 style={[
@@ -47,13 +52,13 @@ export default function MobileInteriorMarkersRenderer({ markers, selectedFloor }
                   <Text style={styles.fallbackText}>{markerInfo.fallbackEmoji ?? '?'}</Text>
                 )}
               </Pressable>
-          
+
               {selectedId === id && !!label && typeof label === 'string' && (
                 <View style={styles.callout}>
                   <Text style={styles.calloutText}>{label}</Text>
                 </View>
               )}
-            </View>
+            </Animated.View>
           </MapboxGL.PointAnnotation>
         );
       })}
