@@ -14,46 +14,45 @@ interface Room {
 
 interface Props {
   rooms: Room[];
-  selectedFloor?: number;
 }
 
-const MobileSavedRoomsRenderer: React.FC<Props> = ({ rooms, selectedFloor }) => {
-  // Convert rooms to feature collection filtered by floor
-  const features: Feature[] = rooms
-    .filter((room) => selectedFloor === undefined || room.floor === selectedFloor)
-    .map((room) => ({
-      ...room.geojson,
-      properties: {
-        ...(room.geojson.properties ?? {}),
-        id: room.id,
-        name: room.name,
-        floor: room.floor,
-        accessible: room.accessible,
-        isArea: room.isArea,
-      },
-    }));
+export default function MobileSavedRoomsRenderer({ rooms }: Props) {
+  const roomFeatures: Feature[] = rooms.map((r) => ({
+    ...r.geojson,
+    properties: {
+      ...(r.geojson.properties ?? {}),
+      id: r.id,
+      name: r.name,
+      floor: r.floor,
+      accessible: r.accessible,
+      isArea: r.isArea,
+    },
+  }));
 
   const featureCollection: FeatureCollection = {
     type: 'FeatureCollection',
-    features,
+    features: roomFeatures,
   };
 
-  if (features.length === 0) return null;
+  if (roomFeatures.length === 0) return null;
 
   return (
     <MapboxGL.ShapeSource id="mobile-saved-rooms" shape={featureCollection}>
+      {/* Fill layer with conditional red for non-accessible */}
       <MapboxGL.FillLayer
         id="mobile-saved-rooms-fill"
         style={{
           fillColor: [
             'case',
             ['==', ['get', 'accessible'], false],
-            '#e63946', // red if inaccessible
-            '#219ebc', // blue if accessible
+            '#e63946', // red for non-accessible
+            '#219ebc', // blue for accessible
           ],
           fillOpacity: 0.4,
         }}
       />
+
+      {/* Outline only for rooms that are not areas */}
       <MapboxGL.LineLayer
         id="mobile-saved-rooms-outline"
         filter={['==', ['get', 'isArea'], false]}
@@ -62,8 +61,21 @@ const MobileSavedRoomsRenderer: React.FC<Props> = ({ rooms, selectedFloor }) => 
           lineWidth: 1.5,
         }}
       />
+
+      {/* Label layer for room names */}
+      <MapboxGL.SymbolLayer
+        id="mobile-saved-rooms-label"
+        style={{
+          textField: ['get', 'name'],
+          textSize: 12,
+          textColor: '#000',
+          textHaloColor: '#fff',
+          textHaloWidth: 1,
+          textAllowOverlap: false,
+          textAnchor: 'center',
+        }}
+      />
     </MapboxGL.ShapeSource>
   );
-};
+}
 
-export default MobileSavedRoomsRenderer;
