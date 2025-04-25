@@ -7,6 +7,8 @@ import Constants from 'expo-constants';
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { usePOIs } from './utils/POI/usePOIs';
+import { useBuildings } from './Mobile/Buildings/useBuildings'; 
+import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer'; 
 
 // Set your Mapbox access token from env
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
@@ -16,6 +18,10 @@ export default function MapViewComponent() {
   const { coords, error, heading } = useUserLocation();
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const { pois } = usePOIs();
+
+  // Define the mapId for filtering buildings by map (update this to use dynamic selection if needed)
+  const mapId = 'your-map-id'; // Replace with actual map ID logic or selection
+  const { buildings } = useBuildings(mapId); // Load buildings scoped to a specific map
 
   useEffect(() => {
     requestLocationPermission();
@@ -30,6 +36,10 @@ export default function MapViewComponent() {
           centerCoordinate={coords ?? [-1.615, 54.978]}
         />
 
+        {/* Render saved buildings as fill and outline layers */}
+        <MobileSavedBuildingsRenderer buildings={buildings} />
+
+        {/* Render user location marker */}
         {coords && (
           <MapboxGL.PointAnnotation id="user-location" coordinate={coords}>
             <Animated.View
@@ -41,6 +51,7 @@ export default function MapViewComponent() {
           </MapboxGL.PointAnnotation>
         )}
 
+        {/* Render POIs from hook */}
         {pois.map((poi) => (
           <MapboxGL.PointAnnotation
             key={poi.id}
