@@ -19,6 +19,7 @@ import MobileInteriorMarkersRenderer from './Mobile/InteriorMarkers/MobileInteri
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 import MobilePOIRenderer from './Mobile/POI/MobilePOIRenderer';
+import POIPopupModal from './Mobile/POI/MobilePOIPopupModal'; 
 
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 MapboxGL.setTelemetryEnabled(false);
@@ -161,6 +162,11 @@ export default function MapViewComponent() {
             onPOISelect={(poi) => {
               setSelectedPOI(poi);
               setSelectedBuilding(null);
+            
+              const coords = poi.geojson?.coordinates;
+              if (coords && coords.length === 2 && cameraRef.current) {
+                cameraRef.current.flyTo(coords, 1000);
+              }
             }}
           />
         )}
@@ -180,12 +186,14 @@ export default function MapViewComponent() {
         )}
       </MapboxGL.MapView>
 
+      {/* Show error message */}
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Location error: {error}</Text>
         </View>
       )}
 
+      {/* Show map selector modal */}
       {Platform.OS !== 'web' && (
         <MapSelectorModal
           isVisible={showModal}
@@ -194,11 +202,20 @@ export default function MapViewComponent() {
         />
       )}
 
+      {/* Show floor selector if building selected */}
       {selectedBuilding && availableFloors.length > 0 && selectedFloor !== null && (
         <FloorSelector
           availableFloors={availableFloors}
           selectedFloor={selectedFloor}
           onSelect={setSelectedFloor}
+        />
+      )}
+
+      {/* Show POI Popup Modal if a POI is selected */}
+      {selectedPOI && (
+        <POIPopupModal
+          poi={selectedPOI}
+          onClose={() => setSelectedPOI(null)}
         />
       )}
     </View>

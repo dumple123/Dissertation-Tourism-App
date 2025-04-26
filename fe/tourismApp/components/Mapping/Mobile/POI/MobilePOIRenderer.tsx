@@ -1,6 +1,6 @@
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 // Props type definition for the MobilePOIRenderer component
 type MobilePOIRendererProps = {
@@ -28,23 +28,18 @@ export default function MobilePOIRenderer({
             key={poi.id}
             id={`poi-${poi.id}`}
             coordinate={[coords[0], coords[1]]}
+            onSelected={() => onPOISelect?.(poi)} // <<< THIS IS THE FIX
           >
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => onPOISelect?.(poi)}
-            >
-              {/* If the POI is hidden, render a question mark */}
-              {poi.hidden ? (
-                <Text style={styles.hiddenMarkerText}>?</Text>
-              ) : (
-                <View
-                  style={[
-                    styles.poiMarker,
-                    selectedPOI?.id === poi.id && styles.selectedMarker,
-                  ]}
-                />
-              )}
-            </TouchableOpacity>
+            {poi.hidden ? (
+              <Text style={styles.hiddenMarkerText}>?</Text>
+            ) : (
+              <View
+                style={[
+                  styles.poiMarker,
+                  selectedPOI?.id === poi.id && styles.selectedMarker,
+                ]}
+              />
+            )}
           </MapboxGL.PointAnnotation>
         );
       })}
@@ -71,7 +66,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2A9D8F',
   },
 
-  /* Style for hidden POI marker (just a question mark) */
+  /* Style for hidden POI marker (question mark) */
   hiddenMarkerText: {
     fontSize: 16,
     fontWeight: 'bold',
