@@ -1,29 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import { getPOIsForMap } from '~/api/pois';
 
 type POIRendererProps = {
   map: mapboxgl.Map;
-  mapId: string;
-  refreshKey?: number;
+  pois: any[];
+  selectedPOI?: any;
+  isEditingPosition?: boolean;
+  onPOISelect?: (poi: any) => void;
+  onPositionUpdate?: (newCoords: [number, number]) => void;
 };
 
-export default function POIRenderer({ map, mapId, refreshKey }: POIRendererProps) {
-  const [pois, setPOIs] = useState<any[]>([]);
+export default function POIRenderer({
+  map,
+  pois,
+  selectedPOI,
+  isEditingPosition,
+  onPOISelect,
+  onPositionUpdate,
+}: POIRendererProps) {
   const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
-
-  useEffect(() => {
-    const loadPOIs = async () => {
-      try {
-        const result = await getPOIsForMap(mapId);
-        setPOIs(result);
-      } catch (err) {
-        console.error('Failed to load POIs:', err);
-      }
-    };
-
-    loadPOIs();
-  }, [mapId, refreshKey]);
 
   useEffect(() => {
     markers.forEach((m) => m.remove());
@@ -38,10 +33,31 @@ export default function POIRenderer({ map, mapId, refreshKey }: POIRendererProps
       el.style.borderRadius = '50%';
       el.style.backgroundColor = poi.hidden ? '#888' : '#F4A261';
       el.style.border = '2px solid white';
+      el.style.cursor = 'pointer';
 
-      return new mapboxgl.Marker({ element: el })
+      const marker = new mapboxgl.Marker({ element: el })
         .setLngLat([coords[0], coords[1]])
         .addTo(map);
+
+      if (onPOISelect) {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onPOISelect(poi);
+        });
+      }
+
+      if (selectedPOI && selectedPOI.id === poi.id && isEditingPosition) {
+        marker.setDraggable(true);
+
+        marker.on('dragend', () => {
+          const lngLat = marker.getLngLat();
+          if (onPositionUpdate) {
+            onPositionUpdate([lngLat.lng, lngLat.lat]);
+          }
+        });
+      }
+
+      return marker;
     }).filter(Boolean) as mapboxgl.Marker[];
 
     setMarkers(newMarkers);
@@ -49,7 +65,7 @@ export default function POIRenderer({ map, mapId, refreshKey }: POIRendererProps
     return () => {
       newMarkers.forEach((m) => m.remove());
     };
-  }, [pois, map]);
+  }, [pois, map, onPOISelect, selectedPOI, isEditingPosition, onPositionUpdate]);
 
   return null;
 }

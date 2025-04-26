@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { getMarkersForBuilding, deleteInteriorMarker } from '~/api/interiorMarkers';
-import { createPOI } from '~/api/pois';
+import { createPOI, updatePOI, getPOIsForMap } from '~/api/pois';
 
 import {
   DrawingProvider,
@@ -30,6 +30,7 @@ import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/Sa
 import FloorImageOverlayButton from '~/components/Mapping/Indoor/Stencil/FloorImageOverlayButton';
 import CreatePOIButton from '~/components/Mapping/POI/CreatePOIButton';
 import POIRenderer from '~/components/Mapping/POI/POIRenderer';
+import POISidePanel from '~/components/Mapping/POI/POISidePanel';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -63,6 +64,9 @@ function InnerMapComponent() {
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
   const [selectedRooms, setSelectedRooms] = useState<any[]>([]);
   const [poiRefreshKey, setPOIRefreshKey] = useState(0);
+  const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
+  const [isEditingPOIPosition, setIsEditingPOIPosition] = useState(false);
+  const [pois, setPOIs] = useState<any[]>([]);
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -85,28 +89,44 @@ function InnerMapComponent() {
   }, [selectedBuilding]);
 
   // Load all buildings and rooms for the selected map
-  useEffect(() => {
-    if (!selectedMap) return;
+useEffect(() => {
+  if (!selectedMap) return;
 
-    const loadMapData = async () => {
-      try {
-        const loadedBuildings = await getBuildingsForMap(selectedMap.id);
-        setBuildings(loadedBuildings);
+  const loadMapData = async () => {
+    try {
+      const loadedBuildings = await getBuildingsForMap(selectedMap.id);
+      setBuildings(loadedBuildings);
 
-        const roomsMap: Record<string, any[]> = {};
-        for (const building of loadedBuildings) {
-          const rooms = await getRoomsForBuilding(building.id);
-          roomsMap[building.id] = rooms;
-        }
-
-        setRoomsByBuilding(roomsMap);
-      } catch (err) {
-        console.error('Failed to load map data:', err);
+      const roomsMap: Record<string, any[]> = {};
+      for (const building of loadedBuildings) {
+        const rooms = await getRoomsForBuilding(building.id);
+        roomsMap[building.id] = rooms;
       }
-    };
 
-    loadMapData();
-  }, [selectedMap, buildingRefreshKey]);
+      setRoomsByBuilding(roomsMap);
+    } catch (err) {
+      console.error('Failed to load map data:', err);
+    }
+  };
+
+  loadMapData();
+}, [selectedMap, buildingRefreshKey]);
+
+// Load all POIs for the selected map
+useEffect(() => {
+  if (!selectedMap) return;
+
+  const loadPOIs = async () => {
+    try {
+      const result = await getPOIsForMap(selectedMap.id);
+      setPOIs(result);
+    } catch (err) {
+      console.error('Failed to load POIs:', err);
+    }
+  };
+
+  loadPOIs();
+}, [selectedMap, poiRefreshKey]);
 
   // Load all markers for a building
   useEffect(() => {
@@ -282,9 +302,10 @@ function InnerMapComponent() {
 
         // Type-safe check to avoid TS18047
         if (props && typeof props.id === 'string') {
-          const room = selectedRoomsRef.current.find((r) => r.id === props.id);
-          if (room) {
-            setSelectedRoom(room);
+          const building = buildings.find((b) => b.id === props.id);
+          if (building) {
+            setSelectedBuilding(building);
+            setSelectedPOI(null); // Clear POI if building selected
             return;
           }
         }
@@ -309,6 +330,36 @@ function InnerMapComponent() {
     };
   }, [styleReady, isDrawing]);
 
+  // Global click handler to clear selected room, building, and POI when clicking empty map
+  useEffect(() => {
+    if (!styleReady || !mapRef.current) return;
+
+    const map = mapRef.current;
+
+    const handleMapClick = (e: mapboxgl.MapMouseEvent) => {
+      if (isDrawing) return; // Don't interfere during drawing mode
+
+      // Check if any room was clicked
+      const roomHits = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
+
+      // Check if any building was clicked
+      const buildingHits = map.queryRenderedFeatures(e.point, { layers: ['saved-buildings-fill'] });
+
+      // If no room and no building were clicked, clear selections
+      if (roomHits.length === 0 && buildingHits.length === 0) {
+        setSelectedRoom(null);
+        setSelectedBuilding(null);
+        setSelectedPOI(null); // Clear POI selection when clicking empty map
+      }
+    };
+
+    map.on('click', handleMapClick); // Register the click handler
+
+    return () => {
+      map.off('click', handleMapClick); // Clean up when component unmounts or map changes
+    };
+  }, [styleReady, isDrawing]);
+
   // Map click handler to select buildings
   useEffect(() => {
     if (!styleReady || !mapRef.current) return;
@@ -330,6 +381,7 @@ function InnerMapComponent() {
           const building = buildings.find((b) => b.id === props.id);
           if (building) {
             setSelectedBuilding(building);
+            setSelectedPOI(null);
             return;
           }
         }
@@ -356,193 +408,272 @@ function InnerMapComponent() {
 
   return (
     <>
-      {/* Map selection dropdown */}
-      <SelectMapDropdown onSelectMap={setSelectedMap} />
+  {/* Map selection dropdown */}
+  <SelectMapDropdown onSelectMap={setSelectedMap} />
 
-      {/* Map container */}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100vh', backgroundColor: '#e0e0e0', cursor: isDrawing ? 'crosshair' : 'grab' }} />
+  {/* Map container */}
+  <div
+    ref={mapContainerRef}
+    style={{
+      width: '100%',
+      height: '100vh',
+      backgroundColor: '#e0e0e0',
+      cursor: isDrawing ? 'crosshair' : 'grab',
+    }}
+  />
 
-      {/* floor plan image */}
-      {mapRef.current && <FloorImageOverlayButton map={mapRef.current} />}
+  {/* floor plan image */}
+  {mapRef.current && <FloorImageOverlayButton map={mapRef.current} />}
 
-      {/* POI BUTTON */}
-      {placingPOI && ghostPOICoords && mapRef.current && (
-        <div
-          style={{
-            position: 'absolute',
-            top: mapRef.current.project(ghostPOICoords).y,
-            left: mapRef.current.project(ghostPOICoords).x,
-            transform: 'translate(-50%, -50%)',
-            width: 20,
-            height: 20,
-            borderRadius: '50%',
-            backgroundColor: '#E76F51',
-            opacity: 0.8,
-            pointerEvents: 'none',
-            zIndex: 999,
-          }}
-        />
-      )}
+  {/* POI BUTTON (ghost preview when placing) */}
+  {placingPOI && ghostPOICoords && mapRef.current && (
+    <div
+      style={{
+        position: 'absolute',
+        top: mapRef.current.project(ghostPOICoords).y,
+        left: mapRef.current.project(ghostPOICoords).x,
+        transform: 'translate(-50%, -50%)',
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        backgroundColor: '#E76F51',
+        opacity: 0.8,
+        pointerEvents: 'none',
+        zIndex: 999,
+      }}
+    />
+  )}
 
-    {/* Combined sidebar container */}
-    {(selectedBuilding || selectedRoom) && (
-      <div
-        style={{
-          position: 'absolute',
-          top: 80,
-          left: 20,
+  {/* Combined sidebar container */}
+  {selectedPOI ? (
+    // If a POI is selected, show only the POI sidebar
+    <div
+      style={{
+        position: 'absolute',
+        top: 80,
+        left: 20,
+      }}
+    >
+      <POISidePanel
+        poi={selectedPOI}
+        onSave={async (updatedPOI: any) => {
+          try {
+            await updatePOI(updatedPOI.id, {
+              name: updatedPOI.name,
+              description: updatedPOI.description,
+              hidden: updatedPOI.hidden,
+              geojson: updatedPOI.geojson,
+            });
+            setPOIRefreshKey((k) => k + 1);
+            alert('POI saved successfully.');
+          } catch (err) {
+            console.error('Failed to update POI:', err);
+            alert('Failed to save POI.');
+          }
         }}
-      >
-        {/* Render BuildingSidebar first to measure height */}
-        {selectedBuilding && (
-          <div ref={buildingSidebarRef} style={{ position: 'relative', zIndex: 11 }}>
-            <BuildingSidebar
-              building={selectedBuilding}
-              onDeleteSuccess={() => {
-                setSelectedBuilding(null);
-                setBuildingRefreshKey((k) => k + 1);
-              }}
-              onEditSuccess={async () => {
-                // Refresh buildings list
-                setBuildingRefreshKey((k) => k + 1);
-
-                // Re-fetch and re-select updated building to sync sidebar
-                if (selectedBuilding) {
-                  const fresh = await getBuildingById(selectedBuilding.id);
-                  setSelectedBuilding(fresh);
-                }
-              }}
-            />
-          </div>
-        )}
-
-        {/* Then render RoomSidebar using measured height */}
-        {selectedRoom && (
-          <div style={{ position: 'absolute', zIndex: 9 }}>
-            <RoomSidebar
-              room={selectedRoom}
-              topOffset={80 + (buildingSidebarHeight || 300) + 24}
-              onDeleteSuccess={() => {
-                setSelectedRoom(null);
-                setBuildingRefreshKey((prev) => prev + 1);
-              }}
-              onStartEdit={() => {}}
-            />
-          </div>
-        )}
-      </div>
-    )}
-
-      {/* Floor selector (based on selected building metadata) */}
-      {selectedBuilding && availableFloors.length > 0 && (
-        <FloorSelector availableFloors={availableFloors} selectedFloor={selectedFloor} onSelect={setSelectedFloor} />
-      )}
-
-      {/* Render saved buildings and rooms */}
-      {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
-      {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
-
-      {/* Render saved POIS */}
-      {mapRef.current && selectedMap && (<POIRenderer map={mapRef.current} mapId={selectedMap.id} refreshKey={poiRefreshKey} />)}
-
-      {mapRef.current && selectedBuilding && (
-        <SavedInteriorMarkersRenderer
-          map={mapRef.current}
-          markers={interiorMarkers.filter(m => m.floor === selectedFloor)}
-          onMarkerSelect={setSelectedMarker}
-        />
-      )}
-
-      {/* Drawing interaction layers */}
-      {mapRef.current && isDrawing && (
-        <>
-          <DrawingHandler map={mapRef.current} />
-          <PolygonRenderer map={mapRef.current} />
-        </>
-      )}
-
-      {/* Drawing tools and controls */}
-          {selectedMap && (
-      <div
-        style={{
-          position: 'absolute',
-          top: 20,
-          right: 20,
-          zIndex: 10,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          alignItems: 'flex-end',
-          paddingBottom: 80,
+        onCancel={() => {
+          setSelectedPOI(null);
+          setIsEditingPOIPosition(false);
         }}
-      >
-        {mapRef.current && isDrawing ? (
-          <>
-            {roomInfo ? (
-              <RoomSaveButton onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)} />
-            ) : (
-              <BuildingSaveButton
-                mapId={selectedMap!.id}
-                onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)}
-              />
-            )}
-            <button
-              onClick={completeRing}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#F4A261',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                width: '100%',
-              }}
-            >
-              + Add Hole
-            </button>
-          </>
-        ) : (
-          <>
-            <CreatePOIButton
-              onStartPlacing={(name, description, hidden) => {
-                setPlacingPOI({ name, description, hidden });
-              }}
-              onSuccess={() => setPOIRefreshKey((k) => k + 1)}
-            />
-
-            {selectedBuilding ? (
-              <>
-                <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
-                <CreateInteriorMarkerButton
-                  buildingId={selectedBuilding.id}
-                  currentFloor={selectedFloor}
-                  map={mapRef.current!}
-                  selectedMarker={selectedMarker}
-                  onMarkerCreated={() => {
-                    setSelectedMarker(null);
-                    setBuildingRefreshKey((k) => k + 1);
-                  }}
-                  onDeleteMarker={() => {
-                    setSelectedMarker(null);
-                    setBuildingRefreshKey((k) => k + 1);
-                  }}
-                />
-              </>
-            ) : (
-              <CreateBuildingButton />
-            )}
-          </>
-        )}
-      </div>
-    )}
-
-      {/* Display location error if present */}
-      {error && (
-        <div style={{ position: 'absolute', bottom: 20, left: 20, right: 20, backgroundColor: '#fff3f3', padding: 10, borderRadius: 8, color: '#cc0000', textAlign: 'center' }}>
-          Location error: {error}
+        onEditPosition={() => {
+          setIsEditingPOIPosition((prev) => !prev);
+        }}
+        isEditingPosition={isEditingPOIPosition}
+      />
+    </div>
+  ) : (selectedBuilding || selectedRoom) && (
+    // If a building or room is selected, show building (and optionally room) sidebar
+    <div
+      style={{
+        position: 'absolute',
+        top: 80,
+        left: 20,
+      }}
+    >
+      {/* Render BuildingSidebar first to measure height */}
+      {selectedBuilding && (
+        <div ref={buildingSidebarRef} style={{ position: 'relative', zIndex: 11 }}>
+          <BuildingSidebar
+            building={selectedBuilding}
+            onDeleteSuccess={() => {
+              setSelectedBuilding(null);
+              setBuildingRefreshKey((k) => k + 1);
+            }}
+            onEditSuccess={async () => {
+              setBuildingRefreshKey((k) => k + 1);
+              if (selectedBuilding) {
+                const fresh = await getBuildingById(selectedBuilding.id);
+                setSelectedBuilding(fresh);
+              }
+            }}
+          />
         </div>
       )}
+
+      {/* Then render RoomSidebar using measured height */}
+      {selectedRoom && (
+        <div style={{ position: 'absolute', zIndex: 9 }}>
+          <RoomSidebar
+            room={selectedRoom}
+            topOffset={80 + (buildingSidebarHeight || 300) + 24}
+            onDeleteSuccess={() => {
+              setSelectedRoom(null);
+              setBuildingRefreshKey((prev) => prev + 1);
+            }}
+            onStartEdit={() => {}}
+          />
+        </div>
+      )}
+    </div>
+  )}
+
+  {/* Floor selector (based on selected building metadata) */}
+  {selectedBuilding && availableFloors.length > 0 && (
+    <FloorSelector availableFloors={availableFloors} selectedFloor={selectedFloor} onSelect={setSelectedFloor} />
+  )}
+
+  {/* Render saved buildings and rooms */}
+  {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
+  {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
+
+  {/* Render saved POIs */}
+  {mapRef.current && selectedMap && (
+    <POIRenderer
+      map={mapRef.current}
+      pois={pois}
+      selectedPOI={selectedPOI}
+      isEditingPosition={isEditingPOIPosition}
+      onPOISelect={(poi) => {
+        setSelectedPOI(poi);
+        setSelectedBuilding(null);
+        setSelectedRoom(null);
+      }}
+      onPositionUpdate={(newCoords) => {
+        if (selectedPOI) {
+          setSelectedPOI((prev: any) => ({
+            ...prev,
+            geojson: { type: 'Point', coordinates: newCoords },
+          }));
+          setPOIs((prevPOIs) =>
+            prevPOIs.map((p) =>
+              p.id === selectedPOI.id ? { ...p, geojson: { type: 'Point', coordinates: newCoords } } : p
+            )
+          );
+        }
+      }}
+    />
+  )}
+
+  {/* Render Interior Markers */}
+  {mapRef.current && selectedBuilding && (
+    <SavedInteriorMarkersRenderer
+      map={mapRef.current}
+      markers={interiorMarkers.filter((m) => m.floor === selectedFloor)}
+      onMarkerSelect={setSelectedMarker}
+    />
+  )}
+
+  {/* Drawing interaction layers */}
+  {mapRef.current && isDrawing && (
+    <>
+      <DrawingHandler map={mapRef.current} />
+      <PolygonRenderer map={mapRef.current} />
     </>
+  )}
+
+  {/* Drawing tools and controls */}
+  {selectedMap && (
+    <div
+      style={{
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+        alignItems: 'flex-end',
+        paddingBottom: 80,
+      }}
+    >
+      {mapRef.current && isDrawing ? (
+        <>
+          {roomInfo ? (
+            <RoomSaveButton onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)} />
+          ) : (
+            <BuildingSaveButton
+              mapId={selectedMap.id}
+              onSaveSuccess={() => setBuildingRefreshKey((k) => k + 1)}
+            />
+          )}
+          <button
+            onClick={completeRing}
+            style={{
+              padding: '8px 12px',
+              backgroundColor: '#F4A261',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              width: '100%',
+            }}
+          >
+            + Add Hole
+          </button>
+        </>
+      ) : (
+        <>
+          <CreatePOIButton
+            onStartPlacing={(name, description, hidden) => {
+              setPlacingPOI({ name, description, hidden });
+            }}
+            onSuccess={() => setPOIRefreshKey((k) => k + 1)}
+          />
+          {selectedBuilding ? (
+            <>
+              <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
+              <CreateInteriorMarkerButton
+                buildingId={selectedBuilding.id}
+                currentFloor={selectedFloor}
+                map={mapRef.current!}
+                selectedMarker={selectedMarker}
+                onMarkerCreated={() => {
+                  setSelectedMarker(null);
+                  setBuildingRefreshKey((k) => k + 1);
+                }}
+                onDeleteMarker={() => {
+                  setSelectedMarker(null);
+                  setBuildingRefreshKey((k) => k + 1);
+                }}
+              />
+            </>
+          ) : (
+            <CreateBuildingButton />
+          )}
+        </>
+      )}
+    </div>
+  )}
+
+  {/* Display location error if present */}
+  {error && (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        right: 20,
+        backgroundColor: '#fff3f3',
+        padding: 10,
+        borderRadius: 8,
+        color: '#cc0000',
+        textAlign: 'center',
+      }}
+    >
+      Location error: {error}
+    </div>
+  )}
+</>
   );
 }
 
