@@ -101,6 +101,14 @@ export default function MapViewComponent() {
     }
   };
 
+  // Handle live zoom level updates while region is changing
+  const handleRegionIsChanging = (e: any) => {
+    const zoom = e?.properties?.zoomLevel;
+    if (typeof zoom === 'number') {
+      setZoomLevel(zoom);
+    }
+  };
+
   // Handle available floors when building is selected
   useEffect(() => {
     if (selectedBuilding) {
@@ -146,7 +154,7 @@ export default function MapViewComponent() {
         ref={mapRef}
         style={styles.map}
         onPress={handleMapPress}
-        onRegionDidChange={handleRegionDidChange}
+        onRegionIsChanging={handleRegionIsChanging}
       >
         <MapboxGL.Camera
           ref={cameraRef}
