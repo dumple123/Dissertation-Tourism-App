@@ -43,7 +43,7 @@ function InnerMapComponent() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
   const selectedRoomsRef = useRef<any[]>([]);
-  const [placingPOI, setPlacingPOI] = useState(false);
+  const [placingPOI, setPlacingPOI] = useState<{ name: string; description: string; hidden: boolean } | false>(false);
   const [ghostPOICoords, setGhostPOICoords] = useState<{ lng: number; lat: number } | null>(null);
 
   const { coords, error } = useUserLocation();
@@ -62,6 +62,7 @@ function InnerMapComponent() {
   const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
   const [selectedRooms, setSelectedRooms] = useState<any[]>([]);
+  const [poiRefreshKey, setPOIRefreshKey] = useState(0);
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -146,22 +147,23 @@ function InnerMapComponent() {
   // Handle map click event to create a POI when in placing mode
   useEffect(() => {
     if (!styleReady || !mapRef.current || !placingPOI || !selectedMap) return;
-
+  
     const map = mapRef.current;
-
+  
     const handleClick = async (e: mapboxgl.MapMouseEvent) => {
       try {
         await createPOI({
           mapId: selectedMap.id,
-          name: 'New POI',
-          description: 'Placed manually.',
+          name: placingPOI.name, 
+          description: placingPOI.description, 
           geojson: {
             type: 'Point',
             coordinates: [e.lngLat.lng, e.lngLat.lat],
           },
-          hidden: false,
+          hidden: placingPOI.hidden, 
         });
         alert('POI created!');
+        setPOIRefreshKey((k) => k + 1); 
       } catch (err) {
         console.error('Failed to create POI:', err);
         alert('Failed to create POI.');
@@ -170,9 +172,9 @@ function InnerMapComponent() {
         setGhostPOICoords(null);
       }
     };
-
+  
     map.once('click', handleClick);
-
+  
     return () => {
       map.off('click', handleClick);
     };
@@ -441,7 +443,7 @@ function InnerMapComponent() {
       {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
 
       {/* Render saved POIS */}
-      {mapRef.current && selectedMap && (<POIRenderer map={mapRef.current} mapId={selectedMap.id} />)}
+      {mapRef.current && selectedMap && (<POIRenderer map={mapRef.current} mapId={selectedMap.id} refreshKey={poiRefreshKey} />)}
 
       {mapRef.current && selectedBuilding && (
         <SavedInteriorMarkersRenderer
@@ -501,7 +503,12 @@ function InnerMapComponent() {
           </>
         ) : (
           <>
-            <CreatePOIButton onStartPlacing={() => setPlacingPOI(true)} />
+            <CreatePOIButton
+              onStartPlacing={(name, description, hidden) => {
+                setPlacingPOI({ name, description, hidden });
+              }}
+              onSuccess={() => setPOIRefreshKey((k) => k + 1)}
+            />
 
             {selectedBuilding ? (
               <>

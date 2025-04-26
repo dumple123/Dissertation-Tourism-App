@@ -5,9 +5,10 @@ import { getPOIsForMap } from '~/api/pois';
 type POIRendererProps = {
   map: mapboxgl.Map;
   mapId: string;
+  refreshKey?: number;
 };
 
-export default function POIRenderer({ map, mapId }: POIRendererProps) {
+export default function POIRenderer({ map, mapId, refreshKey }: POIRendererProps) {
   const [pois, setPOIs] = useState<any[]>([]);
   const [markers, setMarkers] = useState<mapboxgl.Marker[]>([]);
 
@@ -22,7 +23,7 @@ export default function POIRenderer({ map, mapId }: POIRendererProps) {
     };
 
     loadPOIs();
-  }, [mapId]);
+  }, [mapId, refreshKey]);
 
   useEffect(() => {
     markers.forEach((m) => m.remove());

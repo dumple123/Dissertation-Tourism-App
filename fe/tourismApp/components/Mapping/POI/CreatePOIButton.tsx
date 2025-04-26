@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 type CreatePOIButtonProps = {
   onStartPlacing: (name: string, description: string, hidden: boolean) => void;
+  onSuccess: () => void;
 };
 
-export default function CreatePOIButton({ onStartPlacing }: CreatePOIButtonProps) {
+export default function CreatePOIButton({ onStartPlacing, onSuccess }: CreatePOIButtonProps) {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -16,6 +17,7 @@ export default function CreatePOIButton({ onStartPlacing }: CreatePOIButtonProps
       return;
     }
     onStartPlacing(name.trim(), description.trim(), hidden);
+    onSuccess();
     setShowForm(false);
     setName('');
     setDescription('');
