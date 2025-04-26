@@ -1,20 +1,13 @@
-import { getTokens } from '~/utils/tokenUtils';
-import Constants from 'expo-constants';
-
-const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/poi-progress`;
+import { axiosInstance } from '~/api/index';
 
 // Get all POIs a user has visited
 export async function getUserPOIProgress(userId: string) {
-  const { accessToken } = await getTokens();
-
-  const res = await fetch(`${API_BASE}/user/${userId}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.get(`/api/poi-progress/user/${userId}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch POI progress');
+  }
 }
 
 // Mark a POI as visited
@@ -22,31 +15,19 @@ export async function markPOIAsVisited(data: {
   userId: string;
   poiId: string;
 }) {
-  const { accessToken } = await getTokens();
-
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.post(`/api/poi-progress`, data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to mark POI as visited');
+  }
 }
 
 // Delete a visit record (unvisit)
 export async function deletePOIProgress(id: string) {
-  const { accessToken } = await getTokens();
-
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
+  try {
+    await axiosInstance.delete(`/api/poi-progress/${id}`);
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to delete POI progress');
+  }
 }

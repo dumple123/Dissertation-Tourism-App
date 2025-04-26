@@ -1,60 +1,50 @@
-import { getTokens } from '~/utils/tokenUtils';
-import Constants from 'expo-constants';
+import { axiosInstance } from '~/api/index';
 
-const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/buildings`;
-
+// Get a single building by ID
 export async function getBuildingById(id: string) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/${id}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.get(`/api/buildings/${id}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch building');
+  }
 }
 
+// Update a building
 export async function updateBuilding(id: string, data: {
   name?: string;
   numFloors?: number;
   bottomFloor?: number;
   geojson?: any;
 }) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.put(`/api/buildings/${id}`, data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to update building');
+  }
 }
 
+// Delete a building
 export async function deleteBuilding(id: string) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
+  try {
+    await axiosInstance.delete(`/api/buildings/${id}`);
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to delete building');
+  }
 }
 
+// Get all buildings for a map
 export async function getBuildingsForMap(mapId: string) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/map/${mapId}`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.get(`/api/buildings/map/${mapId}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch buildings');
+  }
 }
 
+// Create a new building
 export async function createBuilding(data: {
   name: string;
   mapId: string;
@@ -62,16 +52,10 @@ export async function createBuilding(data: {
   bottomFloor: number;
   geojson: any;
 }) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.post(`/api/buildings`, data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to create building');
+  }
 }

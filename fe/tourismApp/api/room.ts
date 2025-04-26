@@ -1,7 +1,4 @@
-import { getTokens } from '~/utils/tokenUtils';
-import Constants from 'expo-constants';
-
-const API_BASE = `${Constants.expoConfig?.extra?.API_URL}/api/rooms`;
+import { axiosInstance } from '~/api/index';
 
 // Create a new room
 export async function createRoom(data: {
@@ -10,31 +7,22 @@ export async function createRoom(data: {
   buildingId: string;
   geojson: any;
 }) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(API_BASE, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.post('/api/rooms', data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to create room');
+  }
 }
 
 // Get all rooms for a building
 export async function getRoomsForBuilding(buildingId: string) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/building/${buildingId}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.get(`/api/rooms/building/${buildingId}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch rooms');
+  }
 }
 
 // Update a room
@@ -46,29 +34,19 @@ export async function updateRoom(id: string, data: {
   accessible?: boolean;
   isArea?: boolean;
 }) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) throw new Error(await res.text());
-  return await res.json();
+  try {
+    const res = await axiosInstance.put(`/api/rooms/${id}`, data);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to update room');
+  }
 }
 
 // Delete a room
 export async function deleteRoom(id: string) {
-  const { accessToken } = await getTokens();
-  const res = await fetch(`${API_BASE}/${id}`, {
-    method: 'DELETE',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  if (!res.ok) throw new Error(await res.text());
+  try {
+    await axiosInstance.delete(`/api/rooms/${id}`);
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to delete room');
+  }
 }
