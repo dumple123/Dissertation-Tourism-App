@@ -293,25 +293,23 @@ useEffect(() => {
 
     const handleRoomClick = (e: mapboxgl.MapMouseEvent) => {
       if (isDrawing) return;
-
+    
       const features = map.queryRenderedFeatures(e.point, { layers: ['saved-rooms-fill'] });
-
+    
       if (features.length > 0) {
         const feature = features[0];
         const props = feature?.properties;
-
-        // Type-safe check to avoid TS18047
+    
         if (props && typeof props.id === 'string') {
-          const building = buildings.find((b) => b.id === props.id);
-          if (building) {
-            setSelectedBuilding(building);
-            setSelectedPOI(null); // Clear POI if building selected
+          const room = selectedRoomsRef.current.find((r) => r.id === props.id);
+          if (room) {
+            setSelectedRoom(room);
+            setSelectedPOI(null);
             return;
           }
         }
       }
-
-      // If no room feature found or not matched
+    
       setSelectedRoom(null);
     };
 
@@ -381,6 +379,7 @@ useEffect(() => {
           const building = buildings.find((b) => b.id === props.id);
           if (building) {
             setSelectedBuilding(building);
+            setSelectedRoom(null);
             setSelectedPOI(null);
             return;
           }
@@ -396,6 +395,13 @@ useEffect(() => {
       map.off('click', handleBuildingClick);
     };
   }, [styleReady, isDrawing, buildings]);
+
+  // When building is unselected, clear any selected room
+  useEffect(() => {
+    if (!selectedBuilding) {
+      setSelectedRoom(null);
+    }
+  }, [selectedBuilding]);
 
   // Show loading screen while waiting for location
   if (!coords && !error) {
@@ -425,7 +431,7 @@ useEffect(() => {
   {/* floor plan image */}
   {mapRef.current && <FloorImageOverlayButton map={mapRef.current} />}
 
-  {/* POI BUTTON (ghost preview when placing) */}
+  {/* POI ghost preview when placing */}
   {placingPOI && ghostPOICoords && mapRef.current && (
     <div
       style={{
@@ -444,16 +450,10 @@ useEffect(() => {
     />
   )}
 
-  {/* Combined sidebar container */}
+  {/* Sidebar container */}
   {selectedPOI ? (
-    // If a POI is selected, show only the POI sidebar
-    <div
-      style={{
-        position: 'absolute',
-        top: 80,
-        left: 20,
-      }}
-    >
+    // Show POI sidebar only
+    <div style={{ position: 'absolute', top: 80, left: 20 }}>
       <POISidePanel
         poi={selectedPOI}
         onSave={async (updatedPOI: any) => {
@@ -481,16 +481,9 @@ useEffect(() => {
         isEditingPosition={isEditingPOIPosition}
       />
     </div>
-  ) : (selectedBuilding || selectedRoom) && (
-    // If a building or room is selected, show building (and optionally room) sidebar
-    <div
-      style={{
-        position: 'absolute',
-        top: 80,
-        left: 20,
-      }}
-    >
-      {/* Render BuildingSidebar first to measure height */}
+  ) : selectedRoom ? (
+    // Show BuildingSidebar + RoomSidebar if a room is selected
+    <div style={{ position: 'absolute', top: 80, left: 20 }}>
       {selectedBuilding && (
         <div ref={buildingSidebarRef} style={{ position: 'relative', zIndex: 11 }}>
           <BuildingSidebar
@@ -509,32 +502,56 @@ useEffect(() => {
           />
         </div>
       )}
-
-      {/* Then render RoomSidebar using measured height */}
-      {selectedRoom && (
-        <div style={{ position: 'absolute', zIndex: 9 }}>
-          <RoomSidebar
-            room={selectedRoom}
-            topOffset={80 + (buildingSidebarHeight || 300) + 24}
-            onDeleteSuccess={() => {
-              setSelectedRoom(null);
-              setBuildingRefreshKey((prev) => prev + 1);
-            }}
-            onStartEdit={() => {}}
-          />
-        </div>
-      )}
+      <div style={{ position: 'absolute', zIndex: 9 }}>
+        <RoomSidebar
+          room={selectedRoom}
+          topOffset={80 + (buildingSidebarHeight || 300) + 24}
+          onDeleteSuccess={() => {
+            setSelectedRoom(null);
+            setBuildingRefreshKey((prev) => prev + 1);
+          }}
+          onStartEdit={() => {}}
+        />
+      </div>
     </div>
-  )}
+  ) : selectedBuilding ? (
+    // Show BuildingSidebar only if a building is selected
+    <div style={{ position: 'absolute', top: 80, left: 20 }}>
+      <div ref={buildingSidebarRef} style={{ position: 'relative', zIndex: 11 }}>
+        <BuildingSidebar
+          building={selectedBuilding}
+          onDeleteSuccess={() => {
+            setSelectedBuilding(null);
+            setBuildingRefreshKey((k) => k + 1);
+          }}
+          onEditSuccess={async () => {
+            setBuildingRefreshKey((k) => k + 1);
+            if (selectedBuilding) {
+              const fresh = await getBuildingById(selectedBuilding.id);
+              setSelectedBuilding(fresh);
+            }
+          }}
+        />
+      </div>
+    </div>
+  ) : null}
 
   {/* Floor selector (based on selected building metadata) */}
   {selectedBuilding && availableFloors.length > 0 && (
-    <FloorSelector availableFloors={availableFloors} selectedFloor={selectedFloor} onSelect={setSelectedFloor} />
+    <FloorSelector
+      availableFloors={availableFloors}
+      selectedFloor={selectedFloor}
+      onSelect={setSelectedFloor}
+    />
   )}
 
   {/* Render saved buildings and rooms */}
-  {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
-  {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
+  {mapRef.current && selectedMap && (
+    <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />
+  )}
+  {mapRef.current && selectedBuilding && (
+    <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />
+  )}
 
   {/* Render saved POIs */}
   {mapRef.current && selectedMap && (
@@ -556,7 +573,9 @@ useEffect(() => {
           }));
           setPOIs((prevPOIs) =>
             prevPOIs.map((p) =>
-              p.id === selectedPOI.id ? { ...p, geojson: { type: 'Point', coordinates: newCoords } } : p
+              p.id === selectedPOI.id
+                ? { ...p, geojson: { type: 'Point', coordinates: newCoords } }
+                : p
             )
           );
         }
@@ -624,32 +643,39 @@ useEffect(() => {
       ) : (
         <>
           <CreatePOIButton
-            onStartPlacing={(name, description, hidden) => {
-              setPlacingPOI({ name, description, hidden });
-            }}
-            onSuccess={() => setPOIRefreshKey((k) => k + 1)}
-          />
-          {selectedBuilding ? (
-            <>
-              <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
-              <CreateInteriorMarkerButton
-                buildingId={selectedBuilding.id}
-                currentFloor={selectedFloor}
-                map={mapRef.current!}
-                selectedMarker={selectedMarker}
-                onMarkerCreated={() => {
-                  setSelectedMarker(null);
-                  setBuildingRefreshKey((k) => k + 1);
-                }}
-                onDeleteMarker={() => {
-                  setSelectedMarker(null);
-                  setBuildingRefreshKey((k) => k + 1);
-                }}
-              />
-            </>
-          ) : (
-            <CreateBuildingButton />
-          )}
+  onStartPlacing={(name, description, hidden) => {
+    setPlacingPOI({ name, description, hidden });
+  }}
+  onSuccess={() => setPOIRefreshKey((k) => k + 1)}
+/>
+
+{selectedBuilding ? (
+  <>
+    <CreateRoomButton
+      buildingId={selectedBuilding.id}
+      currentFloor={selectedFloor}
+    />
+    
+    {mapRef.current && (
+      <CreateInteriorMarkerButton
+        buildingId={selectedBuilding.id}
+        currentFloor={selectedFloor}
+        map={mapRef.current}
+        selectedMarker={selectedMarker}
+        onMarkerCreated={() => {
+          setSelectedMarker(null);
+          setBuildingRefreshKey((k) => k + 1);
+        }}
+        onDeleteMarker={() => {
+          setSelectedMarker(null);
+          setBuildingRefreshKey((k) => k + 1);
+        }}
+      />
+    )}
+  </>
+) : (
+  <CreateBuildingButton />
+)}
         </>
       )}
     </div>
