@@ -62,8 +62,6 @@ export default function MapViewComponent() {
   const { rooms } = useRooms(selectedBuilding?.id ?? null);
   const { markers } = useInteriorMarkers(selectedBuilding?.id ?? null);
 
-  console.log('Current coords:', coords);
-
   // Handle map selection
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
