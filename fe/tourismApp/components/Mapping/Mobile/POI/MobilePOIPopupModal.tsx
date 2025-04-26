@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
 
 type POIPopupModalProps = {
   poi: any;
@@ -14,17 +14,23 @@ export default function POIPopupModal({ poi, onClose }: POIPopupModalProps) {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{poi.name}</Text>
-          <Text style={styles.modalDescription}>
-            {poi.description || 'No description available.'}
-          </Text>
-          <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
-            <Text style={styles.modalCloseButtonText}>Close</Text>
-          </TouchableOpacity>
+      {/* Outer touchable area to dismiss modal when tapped */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.modalContainer}>
+          {/* Prevent closing when tapping inside the content */}
+          <TouchableWithoutFeedback onPress={() => {}}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>{poi.name}</Text>
+              <Text style={styles.modalDescription}>
+                {poi.description || 'No description available.'}
+              </Text>
+              <TouchableOpacity onPress={onClose} style={styles.modalCloseButton}>
+                <Text style={styles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
-      </View>
+      </TouchableWithoutFeedback>
     </Modal>
   );
 }

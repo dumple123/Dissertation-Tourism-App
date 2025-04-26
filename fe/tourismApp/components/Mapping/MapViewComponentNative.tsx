@@ -58,15 +58,18 @@ export default function MapViewComponent() {
   const { rooms } = useRooms(selectedBuilding?.id ?? null);
   const { markers } = useInteriorMarkers(selectedBuilding?.id ?? null);
 
+  // Handle map selection
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
     setShowModal(false);
   };
 
+  // Handle return to home if modal closed without selection
   const handleModalCloseToHome = () => {
     router.replace('/');
   };
 
+  // Handle map press (deselect POI and building)
   const handleMapPress = (e: any) => {
     const screenPoint = e.geometry.coordinates;
     console.log('Tapped map at:', screenPoint);
@@ -74,6 +77,7 @@ export default function MapViewComponent() {
     setSelectedPOI(null);
   };
 
+  // Handle building press (select building and deselect POI)
   const handleBuildingPress = (id: string) => {
     const building = buildings.find((b) => b.id === id);
     if (building) {
@@ -83,6 +87,7 @@ export default function MapViewComponent() {
     }
   };
 
+  // Handle region zoom changes for indoor markers visibility
   const handleRegionDidChange = (e: any) => {
     const zoom = e?.properties?.zoomLevel;
     if (typeof zoom === 'number') {
@@ -95,6 +100,7 @@ export default function MapViewComponent() {
     }
   };
 
+  // Handle available floors when building is selected
   useEffect(() => {
     if (selectedBuilding) {
       const { bottomFloor, numFloors } = selectedBuilding;
@@ -109,10 +115,12 @@ export default function MapViewComponent() {
     }
   }, [selectedBuilding]);
 
+  // Request location permissions when component mounts
   useEffect(() => {
     requestLocationPermission();
   }, []);
 
+  // Load POIs when map is selected
   useEffect(() => {
     if (!selectedMap) return;
 
@@ -145,6 +153,7 @@ export default function MapViewComponent() {
           centerCoordinate={coords ?? [-1.615, 54.978]}
         />
 
+        {/* Render saved buildings */}
         {mapId && (
           <MobileSavedBuildingsRenderer
             buildings={buildings}
@@ -154,24 +163,42 @@ export default function MapViewComponent() {
           />
         )}
 
-        {/* Always show POIs when map is selected */}
-        {mapId && pois.length > 0 && (
-          <MobilePOIRenderer
-            pois={pois}
-            selectedPOI={selectedPOI}
-            onPOISelect={(poi) => {
-              setSelectedPOI(poi);
-              setSelectedBuilding(null);
-            
-              const coords = poi.geojson?.coordinates;
-              if (coords && coords.length === 2 && cameraRef.current) {
-                cameraRef.current.flyTo(coords, 1000);
-              }
-            }}
-          />
+        {/* Render POIs */}
+        {mapId && (
+          <>
+            <MobilePOIRenderer
+              pois={pois}
+              selectedPOI={selectedPOI}
+              onPOISelect={(poi) => {
+                setSelectedPOI(poi);
+                setSelectedBuilding(null);
+
+                const coords = poi.geojson?.coordinates;
+                if (coords && coords.length === 2 && cameraRef.current) {
+                  // Smoothly pan to POI, and bounce slightly after
+                  cameraRef.current.flyTo(coords, 1000);
+
+                  setTimeout(() => {
+                    cameraRef.current?.setCamera({
+                      centerCoordinate: coords,
+                      zoomLevel: Math.max(zoomLevel, 17),
+                      animationDuration: 500,
+                    });
+                  }, 1000);
+                }
+              }}
+            />
+
+            {/* Show "No POIs found" if empty */}
+            {pois.length === 0 && (
+              <View style={styles.noPoisContainer}>
+                <Text style={styles.noPoisText}>No POIs found for this map.</Text>
+              </View>
+            )}
+          </>
         )}
 
-        {/* Only show rooms and interior markers when building selected */}
+        {/* Render saved rooms and interior markers */}
         {selectedBuilding && selectedFloor !== null && (
           <>
             <MobileSavedRoomsRenderer rooms={filteredRooms} />
@@ -222,6 +249,7 @@ export default function MapViewComponent() {
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
@@ -245,5 +273,18 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#cc0000',
     textAlign: 'center',
+  },
+  noPoisContainer: {
+    position: 'absolute',
+    top: 60,
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  noPoisText: {
+    fontSize: 14,
+    color: '#777',
   },
 });
