@@ -5,7 +5,8 @@ import { View, StyleSheet } from 'react-native';
 import { useAuth } from '~/components/User/AuthContext';
 import Navbar from '~/components/User/Navigation/Navbar';
 import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
-import { LocationProvider } from '~/components/Mapping/utils/useLocation'; 
+import { LocationProvider } from '~/components/Mapping/utils/useLocation';
+import { POIProgressProvider } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
@@ -32,8 +33,10 @@ function InnerLayout() {
 export default function AuthenticatedLayoutWrapper() {
   return (
     <ThemeProvider>
-      <LocationProvider> 
-        <InnerLayout />
+      <LocationProvider>
+        <POIProgressProvider> {/* <-- NEW */}
+          <InnerLayout />
+        </POIProgressProvider>
       </LocationProvider>
     </ThemeProvider>
   );
