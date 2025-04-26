@@ -51,7 +51,7 @@ export function useCheckNearbyPOIs({
             console.log(`Marked POI ${poi.id} as visited (distance: ${distance}m)`);
             visitedAny = true;
           } catch (err) {
-            console.error('❌ Failed to mark POI as visited:', err);
+            console.error('Failed to mark POI as visited:', err);
           }
         }
       }
