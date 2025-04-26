@@ -6,6 +6,7 @@ import Constants from 'expo-constants';
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { getMarkersForBuilding, deleteInteriorMarker } from '~/api/interiorMarkers';
+import { createPOI } from '~/api/pois';
 
 import {
   DrawingProvider,
@@ -27,6 +28,7 @@ import FloorSelector from '~/components/Mapping/Indoor/Buildings/FloorSelector';
 import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/CreateMarkerButton';
 import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/SavedMarkerRenderer';
 import FloorImageOverlayButton from '~/components/Mapping/Indoor/Stencil/FloorImageOverlayButton';
+import CreatePOIButton from '~/components/Mapping/POI/CreatePOIButton';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -39,7 +41,9 @@ function InnerMapComponent() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const puckRef = useRef<ReturnType<typeof createUserLocationPuck> | null>(null);
-  const selectedRoomsRef = useRef<any[]>([]); // Ref to hold the latest selectedRooms for event handlers
+  const selectedRoomsRef = useRef<any[]>([]);
+  const [placingPOI, setPlacingPOI] = useState(false);
+  const [ghostPOICoords, setGhostPOICoords] = useState<{ lng: number; lat: number } | null>(null);
 
   const { coords, error } = useUserLocation();
   const { isDrawing, completeRing, roomInfo } = useDrawingContext();
@@ -117,6 +121,61 @@ function InnerMapComponent() {
 
     loadMarkers();
   }, [selectedBuilding, buildingRefreshKey]);
+
+  // Track mouse position on the map while placing a POI
+  useEffect(() => {
+    if (!styleReady || !mapRef.current || !placingPOI) return;
+
+    const map = mapRef.current;
+
+    const handleMouseMove = (e: mapboxgl.MapMouseEvent) => {
+      setGhostPOICoords({
+        lng: e.lngLat.lng,
+        lat: e.lngLat.lat,
+      });
+    };
+
+    map.on('mousemove', handleMouseMove);
+
+    return () => {
+      map.off('mousemove', handleMouseMove);
+    };
+  }, [styleReady, placingPOI]);
+
+  // Handle map click event to create a POI when in placing mode
+  useEffect(() => {
+    if (!styleReady || !mapRef.current || !placingPOI || !selectedMap) return;
+
+    const map = mapRef.current;
+
+    const handleClick = async (e: mapboxgl.MapMouseEvent) => {
+      try {
+        await createPOI({
+          mapId: selectedMap.id,
+          name: 'New POI',
+          description: 'Placed manually.',
+          geojson: {
+            type: 'Point',
+            coordinates: [e.lngLat.lng, e.lngLat.lat],
+          },
+          hidden: false,
+        });
+        alert('POI created!');
+      } catch (err) {
+        console.error('Failed to create POI:', err);
+        alert('Failed to create POI.');
+      } finally {
+        setPlacingPOI(false);
+        setGhostPOICoords(null);
+      }
+    };
+
+    map.once('click', handleClick);
+
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [styleReady, placingPOI, selectedMap]);
 
   // Compute and update selected rooms when building or floor changes
   useEffect(() => {
@@ -303,6 +362,25 @@ function InnerMapComponent() {
       {/* floor plan image */}
       {mapRef.current && <FloorImageOverlayButton map={mapRef.current} />}
 
+      {/* POI BUTTON */}
+      {placingPOI && ghostPOICoords && mapRef.current && (
+        <div
+          style={{
+            position: 'absolute',
+            top: mapRef.current.project(ghostPOICoords).y,
+            left: mapRef.current.project(ghostPOICoords).x,
+            transform: 'translate(-50%, -50%)',
+            width: 20,
+            height: 20,
+            borderRadius: '50%',
+            backgroundColor: '#E76F51',
+            opacity: 0.8,
+            pointerEvents: 'none',
+            zIndex: 999,
+          }}
+        />
+      )}
+
     {/* Combined sidebar container */}
     {(selectedBuilding || selectedRoom) && (
       <div
@@ -419,6 +497,8 @@ function InnerMapComponent() {
           </>
         ) : (
           <>
+            <CreatePOIButton onStartPlacing={() => setPlacingPOI(true)} />
+
             {selectedBuilding ? (
               <>
                 <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
