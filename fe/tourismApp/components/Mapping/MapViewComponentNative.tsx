@@ -22,6 +22,7 @@ import MobileClusteredPOIRenderer from './Mobile/POI/MobileClusteredPOIRenderer'
 import POIPopupModal from './Mobile/POI/MobilePOIPopupModal';
 import LocateMeButton from './Mobile/LocationUtils/LocateMeButton';
 import MobileUserPuck from './Mobile/LocationUtils/MobileUserPuck';
+import POIProgressCircle from '~/components/Mapping/Mobile/POI/POIProgressCircle';
 
 // Mapbox token setup
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
@@ -257,6 +258,11 @@ export default function MapViewComponent() {
             )}
           </MapboxGL.MapView>
 
+          {/* POI Progress Tracker */}
+          <View style={styles.poiProgressWrapper}>
+            <POIProgressCircle />
+          </View>
+
           {/* Add Locate Me button under floor selector */}
           <LocateMeButton
             onPress={() => {
@@ -350,4 +356,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
+  poiProgressWrapper: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    zIndex: 10, // Very important to stay above the map
+  }
 });
