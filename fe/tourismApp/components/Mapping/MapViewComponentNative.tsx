@@ -55,6 +55,7 @@ export default function MapViewComponent() {
   const [zoomLevel, setZoomLevel] = useState(14);
   const [pois, setPois] = useState<any[]>([]);
   const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
+  const [hasInitialFlyTo, setHasInitialFlyTo] = useState(false);
 
   const markerOpacity = useRef(new Animated.Value(0)).current;
 
@@ -119,32 +120,27 @@ export default function MapViewComponent() {
 
   // Fly the camera to user location after a small delay once GPS coordinates are available
   useEffect(() => {
-    if (coords && cameraRef.current) {
-      const [lng, lat] = coords;
+    if (!coords || !selectedMap || hasInitialFlyTo) return;
   
-      // Ensure we have a realistic GPS fix
-      const isValidLocation =
-        lat !== 0 &&
-        lng !== 0 &&
-        lat >= -90 && lat <= 90 &&
-        lng >= -180 && lng <= 180;
+    const [lng, lat] = coords;
+    const isValidLocation =
+      lat !== 0 &&
+      lng !== 0 &&
+      lat >= -90 && lat <= 90 &&
+      lng >= -180 && lng <= 180;
   
-      if (!isValidLocation) {
-        console.warn('Ignoring invalid location:', coords);
-        return;
-      }
-  
-      const timeout = setTimeout(() => {
-        cameraRef.current?.setCamera({
-          centerCoordinate: coords,
-          zoomLevel: 16,
-          animationDuration: 1000,
-        });
-      }, 1000);
-  
-      return () => clearTimeout(timeout);
+    if (!isValidLocation) {
+      console.warn('Ignoring invalid location:', coords);
+      return;
     }
-  }, [coords]);
+  
+    const timeout = setTimeout(() => {
+      cameraRef.current?.flyTo(coords, 3000); 
+      setHasInitialFlyTo(true); 
+    }, 1000);
+  
+    return () => clearTimeout(timeout);
+  }, [coords, selectedMap, hasInitialFlyTo]);
 
   // Load POIs when map is selected
   useEffect(() => {
@@ -270,7 +266,7 @@ export default function MapViewComponent() {
           <LocateMeButton
             onPress={() => {
               if (coords && cameraRef.current) {
-                cameraRef.current.flyTo(coords, 1000);
+                cameraRef.current.flyTo(coords, 3000); 
               }
             }}
           />
