@@ -4,16 +4,21 @@ import MapboxGL from '@rnmapbox/maps';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 
+// Utilities and hooks
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
+import { getPOIsForMap } from '~/api/pois';
+
+// Map subcomponents
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
 import MobileSavedRoomsRenderer from './Mobile/Rooms/MobileSavedRoomsRenderer';
 import MobileInteriorMarkersRenderer from './Mobile/InteriorMarkers/MobileInteriorMarkersRenderer';
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
+import MobilePOIRenderer from './Mobile/POI/MobilePOIRenderer';
 
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 MapboxGL.setTelemetryEnabled(false);
@@ -42,6 +47,9 @@ export default function MapViewComponent() {
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState(14);
+  const [pois, setPois] = useState<any[]>([]);
+  const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
+
   const markerOpacity = useRef(new Animated.Value(0)).current;
 
   const mapId = selectedMap?.id ?? null;
@@ -62,6 +70,7 @@ export default function MapViewComponent() {
     const screenPoint = e.geometry.coordinates;
     console.log('Tapped map at:', screenPoint);
     setSelectedBuilding(null);
+    setSelectedPOI(null);
   };
 
   const handleBuildingPress = (id: string) => {
@@ -69,6 +78,7 @@ export default function MapViewComponent() {
     if (building) {
       console.log('Tapped building:', building.name);
       setSelectedBuilding(building);
+      setSelectedPOI(null);
     }
   };
 
@@ -76,7 +86,6 @@ export default function MapViewComponent() {
     const zoom = e?.properties?.zoomLevel;
     if (typeof zoom === 'number') {
       setZoomLevel(zoom);
-
       Animated.timing(markerOpacity, {
         toValue: zoom >= 15.5 ? 1 : 0,
         duration: 300,
@@ -102,6 +111,21 @@ export default function MapViewComponent() {
   useEffect(() => {
     requestLocationPermission();
   }, []);
+
+  useEffect(() => {
+    if (!selectedMap) return;
+
+    const loadPOIs = async () => {
+      try {
+        const result = await getPOIsForMap(selectedMap.id);
+        setPois(result);
+      } catch (err) {
+        console.error('Failed to load POIs:', err);
+      }
+    };
+
+    loadPOIs();
+  }, [selectedMap]);
 
   const filteredRooms = rooms.filter((r) => r.floor === selectedFloor);
   const filteredMarkers = markers.filter((m) => m.floor === selectedFloor);
@@ -129,6 +153,19 @@ export default function MapViewComponent() {
           />
         )}
 
+        {/* Always show POIs when map is selected */}
+        {mapId && pois.length > 0 && (
+          <MobilePOIRenderer
+            pois={pois}
+            selectedPOI={selectedPOI}
+            onPOISelect={(poi) => {
+              setSelectedPOI(poi);
+              setSelectedBuilding(null);
+            }}
+          />
+        )}
+
+        {/* Only show rooms and interior markers when building selected */}
         {selectedBuilding && selectedFloor !== null && (
           <>
             <MobileSavedRoomsRenderer rooms={filteredRooms} />
