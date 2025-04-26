@@ -4,7 +4,8 @@ import { useRouter, useRootNavigationState } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { useAuth } from '~/components/User/AuthContext';
 import Navbar from '~/components/User/Navigation/Navbar';
-import { ThemeProvider, useTheme } from '~/components/Styles/themeContext'; 
+import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
+import { LocationProvider } from '~/components/Mapping/utils/useLocation'; 
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
@@ -31,7 +32,9 @@ function InnerLayout() {
 export default function AuthenticatedLayoutWrapper() {
   return (
     <ThemeProvider>
-      <InnerLayout />
+      <LocationProvider> 
+        <InnerLayout />
+      </LocationProvider>
     </ThemeProvider>
   );
 }

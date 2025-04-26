@@ -50,7 +50,7 @@ const FloorSelector: React.FC<FloorSelectorProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 90,
     right: 20,
     backgroundColor: '#fff',
     borderRadius: 10,

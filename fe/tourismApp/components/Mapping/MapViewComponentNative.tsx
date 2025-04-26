@@ -5,8 +5,7 @@ import Constants from 'expo-constants';
 import { router } from 'expo-router';
 
 // Utilities and hooks
-import { requestLocationPermission } from './utils/requestLocationPermission';
-import { useUserLocation } from './Hooks/useUserLocation';
+import { useLocation } from './utils/useLocation';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
@@ -19,9 +18,12 @@ import MobileInteriorMarkersRenderer from './Mobile/InteriorMarkers/MobileInteri
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 import MobilePOIRenderer from './Mobile/POI/MobilePOIRenderer';
-import MobileClusteredPOIRenderer from './Mobile/POI/MobileClusteredPOIRenderer'; // <- New
-import POIPopupModal from './Mobile/POI/MobilePOIPopupModal'; 
+import MobileClusteredPOIRenderer from './Mobile/POI/MobileClusteredPOIRenderer';
+import POIPopupModal from './Mobile/POI/MobilePOIPopupModal';
+import LocateMeButton from './Mobile/LocationUtils/LocateMeButton';
+import MobileUserPuck from './Mobile/LocationUtils/MobileUserPuck';
 
+// Mapbox token setup
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 MapboxGL.setTelemetryEnabled(false);
 
@@ -39,7 +41,7 @@ interface Building {
 }
 
 export default function MapViewComponent() {
-  const { coords, error } = useUserLocation();
+  const { coords } = useLocation();
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
 
@@ -58,6 +60,8 @@ export default function MapViewComponent() {
   const { buildings } = useBuildings(mapId);
   const { rooms } = useRooms(selectedBuilding?.id ?? null);
   const { markers } = useInteriorMarkers(selectedBuilding?.id ?? null);
+
+  console.log('Current coords:', coords);
 
   // Handle map selection
   const handleMapSelect = (map: Map) => {
@@ -89,19 +93,6 @@ export default function MapViewComponent() {
   };
 
   // Handle region zoom changes for indoor markers visibility
-  const handleRegionDidChange = (e: any) => {
-    const zoom = e?.properties?.zoomLevel;
-    if (typeof zoom === 'number') {
-      setZoomLevel(zoom);
-      Animated.timing(markerOpacity, {
-        toValue: zoom >= 15.5 ? 1 : 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  };
-
-  // Handle live zoom level updates while region is changing
   const handleRegionIsChanging = (e: any) => {
     const zoom = e?.properties?.zoomLevel;
     if (typeof zoom === 'number') {
@@ -124,10 +115,34 @@ export default function MapViewComponent() {
     }
   }, [selectedBuilding]);
 
-  // Request location permissions when component mounts
+  // Fly the camera to user location after a small delay once GPS coordinates are available
   useEffect(() => {
-    requestLocationPermission();
-  }, []);
+    if (coords && cameraRef.current) {
+      const [lng, lat] = coords;
+  
+      // Ensure we have a realistic GPS fix
+      const isValidLocation =
+        lat !== 0 &&
+        lng !== 0 &&
+        lat >= -90 && lat <= 90 &&
+        lng >= -180 && lng <= 180;
+  
+      if (!isValidLocation) {
+        console.warn('Ignoring invalid location:', coords);
+        return;
+      }
+  
+      const timeout = setTimeout(() => {
+        cameraRef.current?.setCamera({
+          centerCoordinate: coords,
+          zoomLevel: 16,
+          animationDuration: 1000,
+        });
+      }, 1000);
+  
+      return () => clearTimeout(timeout);
+    }
+  }, [coords]);
 
   // Load POIs when map is selected
   useEffect(() => {
@@ -150,92 +165,110 @@ export default function MapViewComponent() {
 
   return (
     <View style={styles.container}>
-      <MapboxGL.MapView
-        ref={mapRef}
-        style={styles.map}
-        onPress={handleMapPress}
-        onRegionIsChanging={handleRegionIsChanging}
-      >
-        <MapboxGL.Camera
-          ref={cameraRef}
-          zoomLevel={14}
-          centerCoordinate={coords ?? [-1.615, 54.978]}
-        />
-
-        {/* Render saved buildings */}
-        {mapId && (
-          <MobileSavedBuildingsRenderer
-            buildings={buildings}
-            selectedFloor={selectedFloor ?? undefined}
-            selectedBuildingId={selectedBuilding?.id}
-            onBuildingPress={handleBuildingPress}
-          />
-        )}
-
-        {/* Render POIs */}
-        {mapId && pois.length > 0 && (
-          zoomLevel >= 12 ? (
-            <MobilePOIRenderer
-              pois={pois}
-              selectedPOI={selectedPOI}
-              zoomLevel={zoomLevel}
-              onPOISelect={(poi) => {
-                setSelectedPOI(poi);
-                setSelectedBuilding(null);
-
-                const coords = poi.geojson?.coordinates;
-                if (coords && coords.length === 2 && cameraRef.current) {
-                  cameraRef.current.flyTo(coords, 1000);
-
-                  setTimeout(() => {
-                    cameraRef.current?.setCamera({
-                      centerCoordinate: coords,
-                      zoomLevel: Math.max(zoomLevel, 17),
-                      animationDuration: 500,
-                    });
-                  }, 1000);
-                }
-              }}
+      {coords && Array.isArray(coords) && coords[0] !== 0 && coords[1] !== 0 ? (
+        <>
+          <MapboxGL.MapView
+            ref={mapRef}
+            style={styles.map}
+            onPress={handleMapPress}
+            onRegionIsChanging={handleRegionIsChanging}
+            logoEnabled={false}
+            attributionEnabled={false}
+            compassEnabled={true}
+            styleURL={MapboxGL.StyleURL.Street}
+          >
+            <MapboxGL.Camera
+              ref={cameraRef}
+              centerCoordinate={coords}
+              zoomLevel={14}
+              animationMode="flyTo"
+              animationDuration={1000}
             />
-          ) : (
-            <MobileClusteredPOIRenderer
-              pois={pois}
-              zoomLevel={zoomLevel}
-              cameraRef={cameraRef}
-              onPOISelect={(poi) => {
-                setSelectedPOI(poi);
-                setSelectedBuilding(null);
-              }}
-            />
-          )
-        )}
 
-        {/* Show "No POIs found" if empty */}
-        {mapId && pois.length === 0 && (
-          <View style={styles.noPoisContainer}>
-            <Text style={styles.noPoisText}>No POIs found for this map.</Text>
-          </View>
-        )}
+            {/* Custom user puck */}
+            {coords && <MobileUserPuck coords={coords} zoomLevel={zoomLevel} />}
 
-        {/* Render saved rooms and interior markers */}
-        {selectedBuilding && selectedFloor !== null && (
-          <>
-            <MobileSavedRoomsRenderer rooms={filteredRooms} />
-            {zoomLevel >= 15 && (
-              <MobileInteriorMarkersRenderer
-                markers={filteredMarkers}
-                selectedFloor={selectedFloor}
-                markerOpacity={markerOpacity}
+            {/* Render saved buildings */}
+            {mapId && (
+              <MobileSavedBuildingsRenderer
+                buildings={buildings}
+                selectedFloor={selectedFloor ?? undefined}
+                selectedBuildingId={selectedBuilding?.id}
+                onBuildingPress={handleBuildingPress}
               />
             )}
-          </>
-        )}
-      </MapboxGL.MapView>
 
-      {/* Show error message */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Location error: {error}</Text>
+            {/* Render POIs */}
+            {mapId && pois.length > 0 && (
+              zoomLevel >= 12 ? (
+                <MobilePOIRenderer
+                  pois={pois}
+                  selectedPOI={selectedPOI}
+                  zoomLevel={zoomLevel}
+                  onPOISelect={(poi) => {
+                    setSelectedPOI(poi);
+                    setSelectedBuilding(null);
+
+                    const coords = poi.geojson?.coordinates;
+                    if (coords && coords.length === 2 && cameraRef.current) {
+                      cameraRef.current.flyTo(coords, 1000);
+                      setTimeout(() => {
+                        cameraRef.current?.setCamera({
+                          centerCoordinate: coords,
+                          zoomLevel: Math.max(zoomLevel, 17),
+                          animationDuration: 500,
+                        });
+                      }, 1000);
+                    }
+                  }}
+                />
+              ) : (
+                <MobileClusteredPOIRenderer
+                  pois={pois}
+                  zoomLevel={zoomLevel}
+                  cameraRef={cameraRef}
+                  onPOISelect={(poi) => {
+                    setSelectedPOI(poi);
+                    setSelectedBuilding(null);
+                  }}
+                />
+              )
+            )}
+
+            {/* Show "No POIs found" if empty */}
+            {mapId && pois.length === 0 && (
+              <View style={styles.noPoisContainer}>
+                <Text style={styles.noPoisText}>No POIs found for this map.</Text>
+              </View>
+            )}
+
+            {/* Render saved rooms and interior markers */}
+            {selectedBuilding && selectedFloor !== null && (
+              <>
+                <MobileSavedRoomsRenderer rooms={filteredRooms} />
+                {zoomLevel >= 15 && (
+                  <MobileInteriorMarkersRenderer
+                    markers={filteredMarkers}
+                    selectedFloor={selectedFloor}
+                    markerOpacity={markerOpacity}
+                  />
+                )}
+              </>
+            )}
+          </MapboxGL.MapView>
+
+          {/* Add Locate Me button under floor selector */}
+          <LocateMeButton
+            onPress={() => {
+              if (coords && cameraRef.current) {
+                cameraRef.current.flyTo(coords, 1000);
+              }
+            }}
+          />
+        </>
+      ) : (
+        <View style={styles.loadingLocationContainer}>
+          <Text style={styles.loadingLocationText}>Locating you...</Text>
         </View>
       )}
 
@@ -265,6 +298,7 @@ export default function MapViewComponent() {
         />
       )}
     </View>
+
   );
 }
 
@@ -305,5 +339,15 @@ const styles = StyleSheet.create({
   noPoisText: {
     fontSize: 14,
     color: '#777',
+  },
+  loadingLocationContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  loadingLocationText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
