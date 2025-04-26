@@ -10,6 +10,7 @@ import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
 import { getPOIsForMap } from '~/api/pois';
+import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext'
 
 // Map subcomponents
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
@@ -23,7 +24,6 @@ import POIPopupModal from './Mobile/POI/MobilePOIPopupModal';
 import LocateMeButton from './Mobile/LocationUtils/LocateMeButton';
 import MobileUserPuck from './Mobile/LocationUtils/MobileUserPuck';
 import POIProgressCircle from '~/components/Mapping/Mobile/POI/POIProgressCircle';
-import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 
 // Mapbox token setup
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
@@ -47,7 +47,7 @@ export default function MapViewComponent() {
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
 
-  const [selectedMap, setSelectedMap] = useState<Map | null>(null);
+  const { selectedMap, setSelectedMap } = useSelectedMap();
   const [showModal, setShowModal] = useState(Platform.OS !== 'web');
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
@@ -67,6 +67,8 @@ export default function MapViewComponent() {
   const handleMapSelect = (map: Map) => {
     setSelectedMap(map);
     setShowModal(false);
+    setSelectedBuilding(null);
+    setPois([]); 
   };
 
   // Handle return to home if modal closed without selection
@@ -279,8 +281,8 @@ export default function MapViewComponent() {
         </View>
       )}
 
-      {/* Show map selector modal */}
-      {Platform.OS !== 'web' && (
+      {/* Show map selector modal ONLY if no map is selected */}
+      {Platform.OS !== 'web' && !selectedMap && (
         <MapSelectorModal
           isVisible={showModal}
           onClose={handleModalCloseToHome}
