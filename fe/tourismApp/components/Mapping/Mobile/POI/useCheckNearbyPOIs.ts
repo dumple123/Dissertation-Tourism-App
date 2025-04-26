@@ -28,9 +28,11 @@ export function useCheckNearbyPOIs({
   const { coords } = useLocation();
 
   useEffect(() => {
-    if (!coords || !userId) return;
+   if (!coords || !userId) return;
 
     const checkNearby = async () => {
+      if (!coords || !userId) return;  
+
       let visitedAny = false;
 
       for (const poi of pois) {
@@ -46,7 +48,7 @@ export function useCheckNearbyPOIs({
         if (distance <= radiusMeters) {
           try {
             await markPOIAsVisited({ userId, poiId: poi.id });
-            console.log(`✅ Marked POI ${poi.id} as visited (distance: ${distance}m)`);
+            console.log(`Marked POI ${poi.id} as visited (distance: ${distance}m)`);
             visitedAny = true;
           } catch (err) {
             console.error('❌ Failed to mark POI as visited:', err);
