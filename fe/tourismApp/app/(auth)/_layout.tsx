@@ -6,13 +6,11 @@ import { useAuth } from '~/components/User/AuthContext';
 import Navbar from '~/components/User/Navigation/Navbar';
 import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
 import { LocationProvider } from '~/components/Mapping/utils/useLocation';
+import { SelectedMapProvider, useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
 import { POIProgressProvider } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
-import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
-import { SelectedMapProvider } from '~/components/Mapping/Mobile/SelectedMapContext';
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
-  const { refreshProgress } = usePOIProgress(); 
   const router = useRouter();
   const navReady = useRootNavigationState();
   const theme = useTheme();
@@ -22,8 +20,6 @@ function InnerLayout() {
 
     if (!isAuthenticated) {
       router.replace('/LandingPage');
-    } else {
-      refreshProgress(); 
     }
   }, [navReady?.key, isAuthenticated]); 
 
@@ -40,12 +36,20 @@ export default function AuthenticatedLayoutWrapper() {
     <ThemeProvider>
       <LocationProvider>
         <SelectedMapProvider>
-          <POIProgressProvider> 
-            <InnerLayout />
-          </POIProgressProvider>
-        </SelectedMapProvider> 
+          <POIProgressProviderWrapper />
+        </SelectedMapProvider>
       </LocationProvider>
     </ThemeProvider>
+  );
+}
+
+function POIProgressProviderWrapper() {
+  const { selectedMap } = useSelectedMap();
+
+  return (
+    <POIProgressProvider key={selectedMap?.id}>
+      <InnerLayout />
+    </POIProgressProvider>
   );
 }
 

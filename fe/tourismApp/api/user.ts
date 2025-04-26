@@ -2,6 +2,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { saveTokens, getTokens, removeTokens } from "~/utils/tokenUtils";
 import { axiosInstance, setAuthHeader, clearAuthHeader } from "~/api/index";
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 interface DecodedToken {
   exp: number; // expiration time (seconds since epoch)
@@ -31,6 +32,8 @@ export const refreshAccessToken = async (refreshToken: string) => {
 export const initializeAuth = async () => {
   const { accessToken, refreshToken } = await getTokens();
 
+  let user = null;
+
   if (accessToken) {
     try {
       const decoded = jwtDecode<DecodedToken>(accessToken);
@@ -39,7 +42,14 @@ export const initializeAuth = async () => {
       if (decoded.exp > currentTime) {
         // Token is still valid
         setAuthHeader(accessToken);
-        return true;
+
+        // Load the user from storage
+        const storedUser = await AsyncStorage.getItem('user');
+        if (storedUser) {
+          user = JSON.parse(storedUser);
+        }
+
+        return { isLoggedIn: true, user };
       }
     } catch (error) {
       console.error("Error decoding access token:", error);
@@ -51,18 +61,24 @@ export const initializeAuth = async () => {
   if (refreshToken) {
     const newAccessToken = await refreshAccessToken(refreshToken);
     if (newAccessToken) {
-      return true;
+      const storedUser = await AsyncStorage.getItem('user');
+      if (storedUser) {
+        user = JSON.parse(storedUser);
+      }
+
+      return { isLoggedIn: true, user };
     }
   }
 
   // No valid token
-  return false;
+  return { isLoggedIn: false, user: null };
 };
 
 // Logs the user out by clearing stored tokens and auth headers
 export const logout = async () => {
   await removeTokens();
   clearAuthHeader();
+  await AsyncStorage.removeItem('user'); // also remove user on logout
   return { success: true };
 };
 
@@ -78,6 +94,7 @@ export const login = async (email: string, password: string) => {
     };
 
     await saveTokens(accessToken, refreshToken);
+    await AsyncStorage.setItem('user', JSON.stringify(user)); // Save user info
     setAuthHeader(accessToken);
 
     return { accessToken, user };
@@ -108,6 +125,7 @@ export const signup = async (
     };
 
     await saveTokens(accessToken, refreshToken);
+    await AsyncStorage.setItem('user', JSON.stringify(user)); // Save user info
     setAuthHeader(accessToken);
 
     return { accessToken, user };
