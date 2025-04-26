@@ -29,6 +29,7 @@ import CreateInteriorMarkerButton from '~/components/Mapping/Indoor/Markers/Crea
 import SavedInteriorMarkersRenderer from '~/components/Mapping/Indoor/Markers/SavedMarkerRenderer';
 import FloorImageOverlayButton from '~/components/Mapping/Indoor/Stencil/FloorImageOverlayButton';
 import CreatePOIButton from '~/components/Mapping/POI/CreatePOIButton';
+import POIRenderer from '~/components/Mapping/POI/POIRenderer';
 
 import { getBuildingsForMap, getBuildingById } from '~/api/building';
 import { getRoomsForBuilding } from '~/api/room';
@@ -438,6 +439,9 @@ function InnerMapComponent() {
       {/* Render saved buildings and rooms */}
       {mapRef.current && selectedMap && <SavedBuildingsRenderer map={mapRef.current} buildings={buildings} />}
       {mapRef.current && selectedBuilding && <SavedRoomsRenderer map={mapRef.current} rooms={selectedRooms} />}
+
+      {/* Render saved POIS */}
+      {mapRef.current && selectedMap && (<POIRenderer map={mapRef.current} mapId={selectedMap.id} />)}
 
       {mapRef.current && selectedBuilding && (
         <SavedInteriorMarkersRenderer
