@@ -170,6 +170,7 @@ export default function MapViewComponent() {
             <MobilePOIRenderer
               pois={pois}
               selectedPOI={selectedPOI}
+              zoomLevel={zoomLevel}
               onPOISelect={(poi) => {
                 setSelectedPOI(poi);
                 setSelectedBuilding(null);

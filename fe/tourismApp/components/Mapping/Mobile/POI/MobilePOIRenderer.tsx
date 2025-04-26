@@ -7,6 +7,7 @@ type MobilePOIRendererProps = {
   pois: any[];
   selectedPOI?: any;
   onPOISelect?: (poi: any) => void;
+  zoomLevel: number;
 };
 
 // MobilePOIRenderer component for displaying POIs on the mobile map
@@ -14,8 +15,25 @@ export default function MobilePOIRenderer({
   pois,
   selectedPOI,
   onPOISelect,
+  zoomLevel,
 }: MobilePOIRendererProps) {
   if (!pois || pois.length === 0) return null;
+
+  // Function to dynamically calculate marker size based on zoom level
+  const getMarkerSize = () => {
+    const minZoom = 12;
+    const maxZoom = 20;
+    const minSize = 8;   // Tiny marker at zoom 12
+    const maxSize = 40;  // Big marker at zoom 20
+
+    const clampedZoom = Math.min(Math.max(zoomLevel, minZoom), maxZoom);
+
+    // Linear interpolation
+    const t = (clampedZoom - minZoom) / (maxZoom - minZoom);
+    return minSize + (maxSize - minSize) * t;
+  };
+
+  const markerSize = getMarkerSize();
 
   return (
     <>
@@ -28,14 +46,24 @@ export default function MobilePOIRenderer({
             key={poi.id}
             id={`poi-${poi.id}`}
             coordinate={[coords[0], coords[1]]}
-            onSelected={() => onPOISelect?.(poi)} // <<< THIS IS THE FIX
+            onSelected={() => onPOISelect?.(poi)}
           >
             {poi.hidden ? (
-              <Text style={styles.hiddenMarkerText}>?</Text>
+              <Text style={[
+                styles.hiddenMarkerText,
+                {
+                  fontSize: markerSize * 0.6, // Scale the ? text size too
+                }
+              ]}>?</Text>
             ) : (
               <View
                 style={[
                   styles.poiMarker,
+                  {
+                    width: markerSize,
+                    height: markerSize,
+                    borderRadius: markerSize / 2,
+                  },
                   selectedPOI?.id === poi.id && styles.selectedMarker,
                 ]}
               />
@@ -51,9 +79,6 @@ export default function MobilePOIRenderer({
 const styles = StyleSheet.create({
   /* Style for normal (visible) POI marker */
   poiMarker: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
     backgroundColor: '#F4A261',
     borderWidth: 2,
     borderColor: '#ffffff',
@@ -68,7 +93,6 @@ const styles = StyleSheet.create({
 
   /* Style for hidden POI marker (question mark) */
   hiddenMarkerText: {
-    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
