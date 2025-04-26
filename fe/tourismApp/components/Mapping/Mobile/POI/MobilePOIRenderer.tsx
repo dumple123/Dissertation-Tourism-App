@@ -1,6 +1,6 @@
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 // Props type definition for the MobilePOIRenderer component
 type MobilePOIRendererProps = {
@@ -33,13 +33,17 @@ export default function MobilePOIRenderer({
               activeOpacity={0.7}
               onPress={() => onPOISelect?.(poi)}
             >
-              <View
-                style={[
-                  styles.poiMarker,
-                  selectedPOI?.id === poi.id && styles.selectedMarker,
-                  poi.hidden && styles.hiddenMarker,
-                ]}
-              />
+              {/* If the POI is hidden, render a question mark */}
+              {poi.hidden ? (
+                <Text style={styles.hiddenMarkerText}>?</Text>
+              ) : (
+                <View
+                  style={[
+                    styles.poiMarker,
+                    selectedPOI?.id === poi.id && styles.selectedMarker,
+                  ]}
+                />
+              )}
             </TouchableOpacity>
           </MapboxGL.PointAnnotation>
         );
@@ -50,18 +54,28 @@ export default function MobilePOIRenderer({
 
 // Styles for POI markers
 const styles = StyleSheet.create({
+  /* Style for normal (visible) POI marker */
   poiMarker: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: '#F4A261', // Normal visible POI
+    backgroundColor: '#F4A261',
     borderWidth: 2,
     borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
+  /* Style for selected POI marker */
   selectedMarker: {
-    backgroundColor: '#2A9D8F', // Selected POI color
+    backgroundColor: '#2A9D8F',
   },
-  hiddenMarker: {
-    backgroundColor: '#cccccc', // Hidden POI color
+
+  /* Style for hidden POI marker (just a question mark) */
+  hiddenMarkerText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
   },
 });
