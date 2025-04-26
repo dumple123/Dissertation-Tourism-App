@@ -1,8 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// -- Utility: Get Storage Engine --
-
 const storage = {
   setItem: async (key: string, value: string) => {
     if (Platform.OS === 'web') {
