@@ -33,7 +33,7 @@ export const POIProgressProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
       async function fetchPOIs() {
         try {
-          const mapId = "your-default-map-id"; // Change later
+          const mapId = "your-default-map-id"; 
           const data = await getPOIsForMap(mapId);
           setPOIs(data);
         } catch (err) {
@@ -50,7 +50,7 @@ export const POIProgressProvider = ({ children }: { children: ReactNode }) => {
   
     useCheckNearbyPOIs({
       pois,
-      userId: user?.id ?? '', // always string
+      userId: user?.id ?? '', 
       visitedPOIIds,
       radiusMeters: 25,
       refreshProgress, // Pass this into useCheckNearbyPOIs
@@ -62,3 +62,7 @@ export const POIProgressProvider = ({ children }: { children: ReactNode }) => {
       </POIProgressContext.Provider>
     );
   };
+
+  export function usePOIProgress() {
+    return useContext(POIProgressContext);
+  }

@@ -7,9 +7,11 @@ import Navbar from '~/components/User/Navigation/Navbar';
 import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
 import { LocationProvider } from '~/components/Mapping/utils/useLocation';
 import { POIProgressProvider } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
+import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
+  const { refreshProgress } = usePOIProgress(); 
   const router = useRouter();
   const navReady = useRootNavigationState();
   const theme = useTheme();
@@ -19,8 +21,10 @@ function InnerLayout() {
 
     if (!isAuthenticated) {
       router.replace('/LandingPage');
+    } else {
+      refreshProgress(); 
     }
-  }, [navReady?.key, isAuthenticated]);
+  }, [navReady?.key, isAuthenticated]); 
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
