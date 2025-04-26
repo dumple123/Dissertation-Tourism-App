@@ -6,7 +6,6 @@ import { router } from 'expo-router';
 
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
-import { usePOIs } from './POI/usePOIs';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
@@ -36,7 +35,6 @@ export default function MapViewComponent() {
   const { coords, error, heading } = useUserLocation();
   const cameraRef = useRef<MapboxGL.Camera>(null);
   const mapRef = useRef<MapboxGL.MapView>(null);
-  const { pois } = usePOIs();
 
   const [selectedMap, setSelectedMap] = useState<Map | null>(null);
   const [showModal, setShowModal] = useState(Platform.OS !== 'web');
@@ -154,15 +152,6 @@ export default function MapViewComponent() {
           </MapboxGL.PointAnnotation>
         )}
 
-        {pois.map((poi) => (
-          <MapboxGL.PointAnnotation
-            key={poi.id}
-            id={poi.id}
-            coordinate={[poi.lng, poi.lat]}
-          >
-            <View style={styles.poiMarker} />
-          </MapboxGL.PointAnnotation>
-        ))}
       </MapboxGL.MapView>
 
       {error && (

@@ -4,10 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
 
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
-import { renderPOIs } from './POI/renderPOIs';
-import { createPOI } from './POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
-import { usePOIs } from './POI/usePOIs';
 import { getMarkersForBuilding, deleteInteriorMarker } from '~/api/interiorMarkers';
 
 import {
@@ -45,7 +42,6 @@ function InnerMapComponent() {
   const selectedRoomsRef = useRef<any[]>([]); // Ref to hold the latest selectedRooms for event handlers
 
   const { coords, error } = useUserLocation();
-  const { pois, addPOI } = usePOIs();
   const { isDrawing, completeRing, roomInfo } = useDrawingContext();
   const styleReady = useMapStyleReady(mapRef.current ?? undefined);
 
@@ -60,7 +56,7 @@ function InnerMapComponent() {
   const [buildingRefreshKey, setBuildingRefreshKey] = useState(0);
   const [interiorMarkers, setInteriorMarkers] = useState<any[]>([]);
   const [selectedMarker, setSelectedMarker] = useState<any | null>(null);
-  const [selectedRooms, setSelectedRooms] = useState<any[]>([]); // State for rooms filtered by floor
+  const [selectedRooms, setSelectedRooms] = useState<any[]>([]);
 
   // BuildingSidebar ref and dynamic height tracking
   const buildingSidebarRef = useRef<HTMLDivElement | null>(null);
@@ -287,13 +283,6 @@ function InnerMapComponent() {
     };
   }, [styleReady, isDrawing, buildings]);
 
-  // Render POIs when they update
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const markers = renderPOIs(pois, mapRef.current);
-    return () => markers.forEach((m) => m.remove());
-  }, [pois]);
-
   // Show loading screen while waiting for location
   if (!coords && !error) {
     return (
@@ -430,19 +419,6 @@ function InnerMapComponent() {
           </>
         ) : (
           <>
-            <button
-              onClick={() => createPOI(addPOI)}
-              style={{
-                padding: '8px 12px',
-                backgroundColor: '#2A9D8F',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-              }}
-            >
-              Add POI
-            </button>
             {selectedBuilding ? (
               <>
                 <CreateRoomButton buildingId={selectedBuilding.id} currentFloor={selectedFloor} />
