@@ -19,6 +19,7 @@ import MobileInteriorMarkersRenderer from './Mobile/InteriorMarkers/MobileInteri
 import MapSelectorModal from './Mobile/MapSelectorModal';
 import FloorSelector from './Mobile/Buildings/FloorSelectorMobile';
 import MobilePOIRenderer from './Mobile/POI/MobilePOIRenderer';
+import MobileClusteredPOIRenderer from './Mobile/POI/MobileClusteredPOIRenderer'; // <- New
 import POIPopupModal from './Mobile/POI/MobilePOIPopupModal'; 
 
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
@@ -164,8 +165,8 @@ export default function MapViewComponent() {
         )}
 
         {/* Render POIs */}
-        {mapId && (
-          <>
+        {mapId && pois.length > 0 && (
+          zoomLevel >= 12 ? (
             <MobilePOIRenderer
               pois={pois}
               selectedPOI={selectedPOI}
@@ -175,7 +176,6 @@ export default function MapViewComponent() {
 
                 const coords = poi.geojson?.coordinates;
                 if (coords && coords.length === 2 && cameraRef.current) {
-                  // Smoothly pan to POI, and bounce slightly after
                   cameraRef.current.flyTo(coords, 1000);
 
                   setTimeout(() => {
@@ -188,14 +188,24 @@ export default function MapViewComponent() {
                 }
               }}
             />
+          ) : (
+            <MobileClusteredPOIRenderer
+              pois={pois}
+              zoomLevel={zoomLevel}
+              cameraRef={cameraRef}
+              onPOISelect={(poi) => {
+                setSelectedPOI(poi);
+                setSelectedBuilding(null);
+              }}
+            />
+          )
+        )}
 
-            {/* Show "No POIs found" if empty */}
-            {pois.length === 0 && (
-              <View style={styles.noPoisContainer}>
-                <Text style={styles.noPoisText}>No POIs found for this map.</Text>
-              </View>
-            )}
-          </>
+        {/* Show "No POIs found" if empty */}
+        {mapId && pois.length === 0 && (
+          <View style={styles.noPoisContainer}>
+            <Text style={styles.noPoisText}>No POIs found for this map.</Text>
+          </View>
         )}
 
         {/* Render saved rooms and interior markers */}
