@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
 import { LocationProvider } from '~/components/Mapping/utils/useLocation';
 import { POIProgressProvider } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
+import { SelectedMapProvider } from '~/components/Mapping/Mobile/SelectedMapContext';
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
@@ -38,9 +39,11 @@ export default function AuthenticatedLayoutWrapper() {
   return (
     <ThemeProvider>
       <LocationProvider>
-        <POIProgressProvider> {/* <-- NEW */}
-          <InnerLayout />
-        </POIProgressProvider>
+        <SelectedMapProvider>
+          <POIProgressProvider> 
+            <InnerLayout />
+          </POIProgressProvider>
+        </SelectedMapProvider> 
       </LocationProvider>
     </ThemeProvider>
   );

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { getMaps } from '~/api/map';
+import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext'; 
 
 interface Map {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
 export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props) {
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(false);
+  const { setSelectedMap } = useSelectedMap();
 
   useEffect(() => {
     if (isVisible) {
@@ -67,7 +69,10 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.item}
-                  onPress={() => onSelect(item)}
+                  onPress={() => {
+                    setSelectedMap(item);  
+                    onSelect(item);       
+                  }}
                 >
                   <Text style={styles.itemText}>{item.name}</Text>
                 </TouchableOpacity>
