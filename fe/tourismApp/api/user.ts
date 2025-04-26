@@ -8,7 +8,7 @@ interface DecodedToken {
 }
 
 // Attempts to refresh the access token using the refresh token
-const refreshAccessToken = async (refreshToken: string) => {
+export const refreshAccessToken = async (refreshToken: string) => {
   try {
     const res = await axiosInstance.post("/refresh", { refreshToken });
     const newAccessToken = res.data.accessToken;
