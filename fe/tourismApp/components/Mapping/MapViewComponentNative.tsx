@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 
 import { requestLocationPermission } from './utils/requestLocationPermission';
 import { useUserLocation } from './Hooks/useUserLocation';
-import { usePOIs } from './utils/POI/usePOIs';
+import { usePOIs } from './POI/usePOIs';
 import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';

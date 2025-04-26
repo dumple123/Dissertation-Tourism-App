@@ -4,10 +4,10 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import Constants from 'expo-constants';
 
 import { createUserLocationPuck } from './utils/createUserLocationPuck';
-import { renderPOIs } from './utils/POI/renderPOIs';
-import { createPOI } from './utils/POI/createPOI';
+import { renderPOIs } from './POI/renderPOIs';
+import { createPOI } from './POI/createPOI';
 import { useUserLocation } from './Hooks/useUserLocation';
-import { usePOIs } from './utils/POI/usePOIs';
+import { usePOIs } from './POI/usePOIs';
 import { getMarkersForBuilding, deleteInteriorMarker } from '~/api/interiorMarkers';
 
 import {
