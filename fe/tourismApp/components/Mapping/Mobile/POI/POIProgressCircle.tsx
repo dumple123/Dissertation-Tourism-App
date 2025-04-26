@@ -1,22 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { usePOIProgress } from './POIProgressProvider'; 
-import { useSelectedMap } from '../SelectedMapContext'; 
+import { usePOIProgress } from './POIProgressProvider';
 
-const SIZE = 90;            // Overall size (slightly smaller for subtle look)
-const STROKE_WIDTH = 8;     // Stroke width
+const SIZE = 90;
+const STROKE_WIDTH = 8;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export default function POIProgressCircle() {
-  const { visitedPOIIds } = usePOIProgress();
-  const { selectedMap } = useSelectedMap();
+  const { visitedPOIIds, totalPOIs } = usePOIProgress();
+  const [warnedNoPOIs, setWarnedNoPOIs] = useState(false);
 
-  const totalPOIs = 20; //TEMPORARY: Replace with real total from your selectedMap
+  useEffect(() => {
+    if (totalPOIs === 0 && !warnedNoPOIs) {
+      console.log('[POIProgressCircle] No POIs loaded yet, hiding tracker');
+      setWarnedNoPOIs(true); // Only log once until POIs appear
+    }
+    if (totalPOIs > 0 && warnedNoPOIs) {
+      setWarnedNoPOIs(false); // Reset if POIs later load
+    }
+  }, [totalPOIs, warnedNoPOIs]);
+
+  if (totalPOIs === 0) {
+    return null;
+  }
+
   const visitedPOIs = visitedPOIIds.size;
-
-  const progress = totalPOIs > 0 ? visitedPOIs / totalPOIs : 0;
+  const progress = visitedPOIs / totalPOIs;
   const percentage = Math.round(progress * 100);
 
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
@@ -51,7 +62,9 @@ export default function POIProgressCircle() {
 
       {/* Percentage Text */}
       <View style={styles.textContainer}>
-        <Text style={styles.percentageText}>{percentage}%</Text>
+        <Text style={styles.percentageText}>
+          {`${percentage}%`}
+        </Text>
       </View>
     </View>
   );
@@ -65,8 +78,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: SIZE / 2,
-    elevation: 6, // Android shadow
-    shadowColor: '#000', // iOS shadow
+    elevation: 6,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -79,6 +92,6 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#264653', // Slightly darker for better contrast
+    color: '#264653',
   },
 });

@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { getMaps } from '~/api/map';
-import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext'; 
+import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
+import { useAuth } from '~/components/User/AuthContext'; // ✨ ADD THIS
 
 interface Map {
   id: string;
@@ -27,6 +28,7 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
   const [maps, setMaps] = useState<Map[]>([]);
   const [loading, setLoading] = useState(false);
   const { setSelectedMap } = useSelectedMap();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (isVisible) {
@@ -42,7 +44,7 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
 
   const handleCloseToHome = () => {
     router.replace('/'); // navigate to home
-    onClose();           // optional: reset parent state if needed
+    onClose();
   };
 
   return (
@@ -50,7 +52,7 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
       animationType="slide"
       transparent
       visible={isVisible}
-      onRequestClose={() => {}} // disables back button on Android
+      onRequestClose={() => {}}
     >
       <View style={styles.modalBackground}>
         <View style={styles.modalContent}>
@@ -58,7 +60,9 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
             <Text style={styles.closeText}>×</Text>
           </TouchableOpacity>
 
-          <Text style={styles.title}>Select a Map</Text>
+          <Text style={styles.title}>
+            {user?.username ? `Please select a map, ${user.username}` : 'Please select a map'}
+          </Text>
 
           {loading ? (
             <ActivityIndicator size="large" />
@@ -70,8 +74,8 @@ export default function MapSelectorModal({ isVisible, onClose, onSelect }: Props
                 <TouchableOpacity
                   style={styles.item}
                   onPress={() => {
-                    setSelectedMap(item);  
-                    onSelect(item);       
+                    setSelectedMap(item);
+                    onSelect(item);
                   }}
                 >
                   <Text style={styles.itemText}>{item.name}</Text>
@@ -113,10 +117,11 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   title: {
-    fontSize: 20,
+    fontSize: 18, // slightly smaller
     fontWeight: 'bold',
     marginBottom: 12,
     textAlign: 'center',
+    color: '#264653',
   },
   item: {
     paddingVertical: 12,

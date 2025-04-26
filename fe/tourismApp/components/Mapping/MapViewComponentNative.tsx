@@ -23,6 +23,7 @@ import POIPopupModal from './Mobile/POI/MobilePOIPopupModal';
 import LocateMeButton from './Mobile/LocationUtils/LocateMeButton';
 import MobileUserPuck from './Mobile/LocationUtils/MobileUserPuck';
 import POIProgressCircle from '~/components/Mapping/Mobile/POI/POIProgressCircle';
+import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 
 // Mapbox token setup
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
