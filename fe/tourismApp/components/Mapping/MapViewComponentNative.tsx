@@ -175,8 +175,10 @@ export default function MapViewComponent() {
             onRegionIsChanging={handleRegionIsChanging}
             logoEnabled={false}
             attributionEnabled={false}
-            compassEnabled={true}
+            compassEnabled={false}
+            compassFadeWhenNorth={false}
             styleURL={MapboxGL.StyleURL.Street}
+            scaleBarEnabled={false}
           >
             <MapboxGL.Camera
               ref={cameraRef}
