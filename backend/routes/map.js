@@ -1,11 +1,10 @@
 import express from "express";
 import prisma from "../prisma/db.js";
-import verifyToken from "../middleware/verifyToken.js";
 
 const router = express.Router();
 
 // Create a new map
-router.post("/", verifyToken, async (req, res) => {
+router.post("/", async (req, res) => {
   const { name } = req.body;
 
   try {
@@ -25,7 +24,7 @@ router.post("/", verifyToken, async (req, res) => {
 });
 
 // Get all maps with their buildings
-router.get("/", verifyToken, async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const maps = await prisma.map.findMany({
       include: {
@@ -40,12 +39,13 @@ router.get("/", verifyToken, async (req, res) => {
   }
 });
 
-// ➡️ NEW: Get all maps that a user has completed at least 50%
-router.get("/completed/:userId", verifyToken, async (req, res) => {
+// Get all maps that a user has completed at least 50%
+router.get("/completed/:userId", async (req, res) => {
   const { userId } = req.params;
 
+  console.log('Fetching completed maps for user:', userId);
+
   try {
-    // Fetch all maps and their POIs
     const maps = await prisma.map.findMany({
       include: {
         pois: {
@@ -57,7 +57,6 @@ router.get("/completed/:userId", verifyToken, async (req, res) => {
       },
     });
 
-    // Fetch user POI visits
     const userProgress = await prisma.user_POI_Progress.findMany({
       where: { userId },
       select: { poiId: true },
@@ -78,11 +77,12 @@ router.get("/completed/:userId", verifyToken, async (req, res) => {
           pois: map.pois,
         };
       })
-      .filter(map => map.completionRate >= 0.5); // Keep only maps completed 50%+
+      .filter(map => map.completionRate >= 0.5);
 
     res.json(completedMaps);
   } catch (err) {
     console.error("Error fetching completed maps:", err);
+    console.error("🔥 Error inside /completed/:userId route:", err);
     res.status(500).json({ error: "Failed to fetch completed maps" });
   }
 });

@@ -1,19 +1,37 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import POIFeed from '~/components/Feed/POIFeed'; 
+import POIFeed from '~/components/Feed/POIFeed';
+import CompletedMapsProfile from '~/components/User/MobileCompletedMaps';
+import { useAuth } from '~/components/User/AuthContext'; 
 
-interface ProfilePageProps {
-  username: string;
-  userId: string;
-}
+const ProfilePage: React.FC = () => {
+  const { user } = useAuth(); 
 
-const ProfilePage: React.FC<ProfilePageProps> = ({ username, userId }) => {
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.title}>Loading...</Text>
+      </View>
+    );
+  }
+
+  const { username, id: userId } = user;
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{username}</Text>
 
-      {/* Show the user's last 10 visits */}
-      <POIFeed userId={userId} limit={10} />
+      {/* Completed Maps section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Completed Maps</Text>
+        <CompletedMapsProfile userId={userId} />
+      </View>
+
+      {/* Recent POI Visits section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recent POI Visits</Text>
+        <POIFeed userId={userId} limit={10} />
+      </View>
     </View>
   );
 };
@@ -29,8 +47,18 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 30,
     color: '#333',
+  },
+  section: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#555',
+    textAlign: 'center',
   },
 });
 
