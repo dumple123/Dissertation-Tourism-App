@@ -8,6 +8,7 @@ import { ThemeProvider, useTheme } from '~/components/Styles/themeContext';
 import { LocationProvider } from '~/components/Mapping/utils/useLocation';
 import { SelectedMapProvider, useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
 import { POIProgressProvider } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
+import { ItineraryPOIProvider } from '~/components/Itinerary/ItineraryPOIProvider'; 
 
 function InnerLayout() {
   const { isAuthenticated } = useAuth();
@@ -25,7 +26,11 @@ function InnerLayout() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <Stack />
+      <Stack
+        screenOptions={{
+          headerShown: false, 
+        }}
+      />
       {isAuthenticated && <Navbar />}
     </View>
   );
@@ -36,7 +41,9 @@ export default function AuthenticatedLayoutWrapper() {
     <ThemeProvider>
       <LocationProvider>
         <SelectedMapProvider>
-          <POIProgressProviderWrapper />
+          <ItineraryPOIProvider> 
+            <POIProgressProviderWrapper />
+          </ItineraryPOIProvider>
         </SelectedMapProvider>
       </LocationProvider>
     </ThemeProvider>
