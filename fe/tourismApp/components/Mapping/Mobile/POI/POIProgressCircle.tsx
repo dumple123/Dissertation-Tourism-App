@@ -1,24 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { usePOIProgress } from './POIProgressProvider';
 
 const SIZE = 90;
-const STROKE_WIDTH = 8;
+const STROKE_WIDTH = 14;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 export default function POIProgressCircle() {
   const { visitedPOIIds, totalPOIs } = usePOIProgress();
   const [warnedNoPOIs, setWarnedNoPOIs] = useState(false);
+  const [showRawCount, setShowRawCount] = useState(false);
 
   useEffect(() => {
     if (totalPOIs === 0 && !warnedNoPOIs) {
       console.log('[POIProgressCircle] No POIs loaded yet, hiding tracker');
-      setWarnedNoPOIs(true); // Only log once until POIs appear
+      setWarnedNoPOIs(true);
     }
     if (totalPOIs > 0 && warnedNoPOIs) {
-      setWarnedNoPOIs(false); // Reset if POIs later load
+      setWarnedNoPOIs(false);
     }
   }, [totalPOIs, warnedNoPOIs]);
 
@@ -32,12 +33,16 @@ export default function POIProgressCircle() {
 
   const strokeDashoffset = CIRCUMFERENCE * (1 - progress);
 
+  const handleToggle = () => {
+    setShowRawCount((prev) => !prev);
+  };
+
   return (
-    <View style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={handleToggle} activeOpacity={0.8}>
       <Svg width={SIZE} height={SIZE}>
         {/* Background Circle */}
         <Circle
-          stroke="#d3d3d3"
+          stroke="#e0e0e0"
           fill="none"
           cx={SIZE / 2}
           cy={SIZE / 2}
@@ -46,7 +51,7 @@ export default function POIProgressCircle() {
         />
         {/* Progress Arc */}
         <Circle
-          stroke="#2A9D8F"
+          stroke="#0077b6"
           fill="none"
           cx={SIZE / 2}
           cy={SIZE / 2}
@@ -60,13 +65,22 @@ export default function POIProgressCircle() {
         />
       </Svg>
 
-      {/* Percentage Text */}
+      {/* Text */}
       <View style={styles.textContainer}>
-        <Text style={styles.percentageText}>
-          {`${percentage}%`}
+        <Text
+          style={[
+            styles.percentageText,
+            showRawCount && styles.rawCountText, // Smaller when showing x/y
+          ]}
+          numberOfLines={2}
+          adjustsFontSizeToFit
+        >
+          {showRawCount
+            ? `${visitedPOIs}/${totalPOIs} POIs Visited`
+            : `${percentage}%`}
         </Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -76,22 +90,22 @@ const styles = StyleSheet.create({
     height: SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: 'transparent',
     borderRadius: SIZE / 2,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
   },
   textContainer: {
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 4,
   },
   percentageText: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#264653',
+    textAlign: 'center',
+  },
+  rawCountText: {
+    fontSize: 14, // Slightly smaller for x/y POIs
   },
 });
