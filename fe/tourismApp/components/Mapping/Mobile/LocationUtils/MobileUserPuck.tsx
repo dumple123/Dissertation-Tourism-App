@@ -25,17 +25,26 @@ export default function MobileUserPuck({ coords, heading = 0 }: MobileUserPuckPr
 
   if (!coords) return null;
 
+  // 30m full circle
   const buffered = turf.buffer(turf.point(smoothedCoords), 30, { units: 'meters' });
+
+  // 30m 200° sector
+  const sectorPolygon = generateSector(smoothedCoords, heading, 30, 120);
 
   const circleGeoJSON: FeatureCollection<Geometry> = {
     type: 'FeatureCollection',
     features: buffered ? [buffered as any] : [],
   };
 
+  const sectorGeoJSON: FeatureCollection<Geometry> = {
+    type: 'FeatureCollection',
+    features: sectorPolygon ? [sectorPolygon as any] : [],
+  };
+
   return (
     <>
-      {/* 30m Real Range Circle */}
-      <MapboxGL.ShapeSource id="user-puck-buffer" shape={circleGeoJSON}>
+      {/* 30m Circle */}
+      <MapboxGL.ShapeSource id="user-circle-buffer" shape={circleGeoJSON}>
         <MapboxGL.FillLayer
           id="user-range-fill"
           style={{
@@ -45,7 +54,18 @@ export default function MobileUserPuck({ coords, heading = 0 }: MobileUserPuckPr
         />
       </MapboxGL.ShapeSource>
 
-      {/* Central User Puck */}
+      {/* 30m FOV Sector */}
+      <MapboxGL.ShapeSource id="user-fov-sector" shape={sectorGeoJSON}>
+        <MapboxGL.FillLayer
+          id="user-fov-fill"
+          style={{
+            fillColor: 'rgba(0, 119, 182, 0.35)', // darker blue
+            fillOutlineColor: 'rgba(0, 119, 182, 0.5)',
+          }}
+        />
+      </MapboxGL.ShapeSource>
+
+      {/* Center user puck */}
       <MapboxGL.PointAnnotation id="mobile-user-puck" coordinate={smoothedCoords}>
         <View style={styles.container}>
           <View style={styles.innerCircle} />
@@ -53,6 +73,25 @@ export default function MobileUserPuck({ coords, heading = 0 }: MobileUserPuckPr
       </MapboxGL.PointAnnotation>
     </>
   );
+}
+
+// -- Generate a 200 degree sector centered at heading
+function generateSector(center: [number, number], heading: number, radiusMeters: number, angleWidth: number) {
+  const steps = 64;
+  const coords = [];
+  const startAngle = heading - angleWidth / 2;
+  const endAngle = heading + angleWidth / 2;
+
+  coords.push(center); 
+
+  for (let i = 0; i <= steps; i++) {
+    const angle = startAngle + (i / steps) * (endAngle - startAngle);
+    const point = turf.destination(center, radiusMeters, angle, { units: 'meters' });
+    coords.push(point.geometry.coordinates);
+  }
+  coords.push(center); 
+
+  return turf.polygon([coords]);
 }
 
 const styles = StyleSheet.create({
