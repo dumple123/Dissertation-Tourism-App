@@ -97,6 +97,7 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
           logoEnabled={false}
           attributionEnabled={false}
           compassEnabled={false}
+          scaleBarEnabled={false}
           styleURL={MapboxGL.StyleURL.Street}
         >
           <MapboxGL.Camera
