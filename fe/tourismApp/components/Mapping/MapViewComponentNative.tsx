@@ -186,7 +186,7 @@ export default function MapViewComponent() {
             />
 
             {/* Custom user puck */}
-            {coords && <MobileUserPuck coords={coords} zoomLevel={zoomLevel} />}
+            {coords && <MobileUserPuck coords={coords} />}
 
             {/* Render saved buildings */}
             {mapId && (
@@ -359,6 +359,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 20,
-    zIndex: 10, // Very important to stay above the map
+    zIndex: 10, 
   }
 });

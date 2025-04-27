@@ -1,19 +1,17 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
+import * as turf from '@turf/turf';
+import type { FeatureCollection, Geometry } from 'geojson';
 
 interface MobileUserPuckProps {
   coords: [number, number];
   heading?: number;
-  zoomLevel?: number;
 }
 
-export default function MobileUserPuck({ coords, heading = 0, zoomLevel = 14 }: MobileUserPuckProps) {
+export default function MobileUserPuck({ coords, heading = 0 }: MobileUserPuckProps) {
   const [smoothedCoords, setSmoothedCoords] = useState<[number, number]>(coords);
-  const sizeAnim = useRef(new Animated.Value(1)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Smooth movement
   useEffect(() => {
     const SMOOTHING_FACTOR = 0.2;
     setSmoothedCoords((prev) => {
@@ -25,101 +23,53 @@ export default function MobileUserPuck({ coords, heading = 0, zoomLevel = 14 }: 
     });
   }, [coords]);
 
-  // Pulsing animation
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.4,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  // Smooth size scaling based on zoom level
-  useEffect(() => {
-    const getSize = () => {
-      const minZoom = 12;
-      const maxZoom = 20;
-      const minSize = 16;
-      const maxSize = 40;
-      const clampedZoom = Math.min(Math.max(zoomLevel || 14, minZoom), maxZoom);
-      const t = (clampedZoom - minZoom) / (maxZoom - minZoom);
-      return minSize + (maxSize - minSize) * t;
-    };
-
-    const newSize = getSize() / 24; 
-    Animated.timing(sizeAnim, {
-      toValue: newSize,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [zoomLevel]);
-
   if (!coords) return null;
 
-  return (
-    <MapboxGL.PointAnnotation id="mobile-user-puck" coordinate={smoothedCoords}>
-      <Animated.View style={[styles.container, { transform: [{ scale: sizeAnim }] }]}>
-        
-        {/* FOV Cone */}
-        <Animated.View
-          style={[
-            styles.fovCone,
-            {
-              transform: [
-                { translateY: -30 },
-                { rotate: `${heading}deg` },
-              ],
-            },
-          ]}
-        />
+  const buffered = turf.buffer(turf.point(smoothedCoords), 30, { units: 'meters' });
 
-        {/* Outer pulsing circle */}
-        <Animated.View style={[styles.outerCircle, { transform: [{ scale: pulseAnim }] }]}>
+  const circleGeoJSON: FeatureCollection<Geometry> = {
+    type: 'FeatureCollection',
+    features: buffered ? [buffered as any] : [],
+  };
+
+  return (
+    <>
+      {/* 30m Real Range Circle */}
+      <MapboxGL.ShapeSource id="user-puck-buffer" shape={circleGeoJSON}>
+        <MapboxGL.FillLayer
+          id="user-range-fill"
+          style={{
+            fillColor: 'rgba(0, 119, 182, 0.2)',
+            fillOutlineColor: 'rgba(0, 119, 182, 0.5)',
+          }}
+        />
+      </MapboxGL.ShapeSource>
+
+      {/* Central User Puck */}
+      <MapboxGL.PointAnnotation id="mobile-user-puck" coordinate={smoothedCoords}>
+        <View style={styles.container}>
           <View style={styles.innerCircle} />
-        </Animated.View>
-      </Animated.View>
-    </MapboxGL.PointAnnotation>
+        </View>
+      </MapboxGL.PointAnnotation>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 24,
-    height: 24,
-    alignItems: 'center',
+    width: 20,
+    height: 20,
+    backgroundColor: '#2A9D8F',
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: 'white',
     justifyContent: 'center',
-  },
-  fovCone: {
-    position: 'absolute',
-    width: 60,
-    height: 60,
-    backgroundColor: 'rgba(42, 157, 143, 0.2)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  outerCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(42, 157, 143, 0.3)',
     alignItems: 'center',
-    justifyContent: 'center',
   },
   innerCircle: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
     backgroundColor: '#2A9D8F',
+    borderRadius: 5,
   },
 });
