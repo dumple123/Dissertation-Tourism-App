@@ -10,6 +10,28 @@ export async function getUserPOIProgress(userId: string) {
   }
 }
 
+// Get latest POIs visited globally (default 10, optional limit)
+export async function getLatestPOIVisits(limit?: number) {
+  try {
+    const query = limit ? `?limit=${limit}` : '';
+    const res = await axiosInstance.get(`/api/poi-progress/latest${query}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch latest POI visits');
+  }
+}
+
+// Get latest POIs visited by a specific user (default 10, optional limit)
+export async function getLatestUserPOIVisits(userId: string, limit?: number) {
+  try {
+    const query = limit ? `?limit=${limit}` : '';
+    const res = await axiosInstance.get(`/api/poi-progress/user/${userId}/latest${query}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || 'Failed to fetch user-specific POI visits');
+  }
+}
+
 // Mark a POI as visited
 export async function markPOIAsVisited(data: {
   userId: string;

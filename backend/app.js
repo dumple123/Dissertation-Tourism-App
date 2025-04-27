@@ -42,8 +42,8 @@ app.use("/api/maps", verifyToken, mapRouter);
 app.use("/api/buildings", verifyToken, buildingRouter);
 app.use("/api/rooms", verifyToken, roomRouter);
 app.use("/api/markers", verifyToken, markerRouter);
-app.use('/api/pois', poiRoutes);
-app.use('/api/poi-progress', poiProgressRoutes);
+app.use('/api/pois', verifyToken, poiRoutes);
+app.use('/api/poi-progress', verifyToken, poiProgressRoutes);
 
 // Start server
 server.listen(3000, '0.0.0.0', function () {

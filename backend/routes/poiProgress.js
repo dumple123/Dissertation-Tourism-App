@@ -35,7 +35,50 @@ router.post('/', async (req, res) => {
   }
 });
 
-// DELETE to unmark a visit (optional feature)
+// GET latest POIs visited globally (default 10, max 100)
+router.get('/latest', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+
+  try {
+    const latestVisits = await prisma.user_POI_Progress.findMany({
+      take: limit,
+      orderBy: { visitedAt: 'desc' },
+      include: {
+        poi: { select: { name: true } },
+        user: { select: { username: true } },
+      },
+    });
+
+    res.json(latestVisits);
+  } catch (error) {
+    console.error('Failed to fetch latest POI visits:', error);
+    res.status(500).json({ error: 'Failed to fetch latest POI visits' });
+  }
+});
+
+// GET latest POIs visited by a specific user (default 10, max 100)
+router.get('/user/:userId/latest', async (req, res) => {
+  const { userId } = req.params;
+  const limit = Math.min(parseInt(req.query.limit) || 10, 100);
+
+  try {
+    const userVisits = await prisma.user_POI_Progress.findMany({
+      where: { userId },
+      take: limit,
+      orderBy: { visitedAt: 'desc' },
+      include: {
+        poi: { select: { name: true } },
+      },
+    });
+
+    res.json(userVisits);
+  } catch (error) {
+    console.error(`Failed to fetch POIs for user ${userId}:`, error);
+    res.status(500).json({ error: 'Failed to fetch user POI visits' });
+  }
+});
+
+// DELETE to unmark a visit
 router.delete('/:id', async (req, res) => {
   try {
     await prisma.user_POI_Progress.delete({
