@@ -1,8 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import MapboxGL from '@rnmapbox/maps';
-import { useItineraryPOIs } from '~/components/Itinerary/ItineraryPOIProvider';
 import Constants from 'expo-constants';
+
+import { useItineraryPOIs } from '~/components/Itinerary/ItineraryPOIProvider';
+import { useLocation } from '~/components/Mapping/utils/useLocation';
+import LocateMeButton from '~/components/Mapping/Mobile/LocationUtils/LocateMeButton';
+import MobileUserPuck from '~/components/Mapping/Mobile/LocationUtils/MobileUserPuck';
 
 MapboxGL.setAccessToken(Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN);
 
@@ -13,6 +17,7 @@ type ItineraryMapSelectModalProps = {
 
 export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryMapSelectModalProps) {
   const { addPOI } = useItineraryPOIs();
+  const { coords: userCoords } = useLocation();
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
@@ -36,6 +41,16 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
     onClose();
   };
 
+  const handleLocateMe = () => {
+    if (userCoords && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: userCoords,
+        zoomLevel: 14,
+        animationDuration: 1000,
+      });
+    }
+  };
+
   return (
     <Modal
       visible={visible}
@@ -55,16 +70,26 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
           <MapboxGL.Camera
             ref={cameraRef}
             zoomLevel={14}
-            centerCoordinate={selectedCoords ?? [-0.1276, 51.5072]} // fallback: London
+            centerCoordinate={userCoords ?? [-1.615, 54.978]}
           />
+
+          {userCoords && (
+            <MobileUserPuck coords={userCoords} heading={0} />
+          )}
 
           {selectedCoords && (
             <MapboxGL.PointAnnotation id="selected-point" coordinate={selectedCoords}>
-                <View style={styles.marker} />
+              <View style={styles.marker} />
             </MapboxGL.PointAnnotation>
           )}
         </MapboxGL.MapView>
 
+        {/* Locate Me button in top right corner */}
+        <View style={styles.locateButtonWrapper}>
+          <LocateMeButton onPress={handleLocateMe} />
+        </View>
+
+        {/* Bottom bar */}
         <View style={styles.bottomBar}>
           <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
             <Text style={styles.cancelText}>Cancel</Text>
@@ -86,22 +111,25 @@ const styles = StyleSheet.create({
   map: { flex: 1 },
   bottomBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 30, 
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     backgroundColor: 'white',
     borderTopWidth: 1,
     borderTopColor: '#ccc',
   },
   cancelButton: {
-    paddingVertical: 12,
+    backgroundColor: '#FF5733',
+    paddingVertical: 10,
     paddingHorizontal: 24,
-    backgroundColor: '#eee',
     borderRadius: 8,
   },
   confirmButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
     backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 24,
     borderRadius: 8,
   },
   cancelText: {
@@ -121,5 +149,11 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 2,
     borderColor: 'white',
+  },
+  locateButtonWrapper: {
+    position: 'absolute',
+    right: 0,
+    bottom: 70,
+    zIndex: 10,
   },
 });
