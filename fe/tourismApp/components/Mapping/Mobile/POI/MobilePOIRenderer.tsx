@@ -83,7 +83,7 @@ export default function MobilePOIRenderer({
             onSelected={() => onPOISelect?.(poi)}
           >
             {poi.hidden && !isVisited ? (
-              <Text style={[styles.hiddenMarkerText, { fontSize: markerSize * 0.6 }]}>?</Text>
+              <Text style={[styles.hiddenMarkerText, { fontSize: markerSize * 1.2 }]}>?</Text>
             ) : (
               <Animated.View
                 style={[
