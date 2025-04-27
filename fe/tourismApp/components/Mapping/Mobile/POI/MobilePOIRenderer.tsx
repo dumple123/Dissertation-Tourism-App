@@ -1,8 +1,9 @@
 import React from 'react';
 import MapboxGL from '@rnmapbox/maps';
 import { View, Text, StyleSheet } from 'react-native';
+import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
+import { Ionicons } from '@expo/vector-icons';
 
-// Props type definition for the MobilePOIRenderer component
 type MobilePOIRendererProps = {
   pois: any[];
   selectedPOI?: any;
@@ -10,25 +11,22 @@ type MobilePOIRendererProps = {
   zoomLevel: number;
 };
 
-// MobilePOIRenderer component for displaying POIs on the mobile map
 export default function MobilePOIRenderer({
   pois,
   selectedPOI,
   onPOISelect,
   zoomLevel,
 }: MobilePOIRendererProps) {
+  const { visitedPOIIds } = usePOIProgress();
+
   if (!pois || pois.length === 0) return null;
 
-  // Function to dynamically calculate marker size based on zoom level
   const getMarkerSize = () => {
     const minZoom = 12;
     const maxZoom = 20;
-    const minSize = 8;   // Tiny marker at zoom 12
-    const maxSize = 40;  // Big marker at zoom 20
-
+    const minSize = 8;
+    const maxSize = 40;
     const clampedZoom = Math.min(Math.max(zoomLevel, minZoom), maxZoom);
-
-    // Linear interpolation
     const t = (clampedZoom - minZoom) / (maxZoom - minZoom);
     return minSize + (maxSize - minSize) * t;
   };
@@ -41,6 +39,9 @@ export default function MobilePOIRenderer({
         const coords = poi.geojson?.coordinates;
         if (!coords || coords.length !== 2) return null;
 
+        const isVisited = visitedPOIIds.has(poi.id);
+        const shouldShowAsNormal = !poi.hidden || isVisited;
+
         return (
           <MapboxGL.PointAnnotation
             key={poi.id}
@@ -51,9 +52,7 @@ export default function MobilePOIRenderer({
             {poi.hidden ? (
               <Text style={[
                 styles.hiddenMarkerText,
-                {
-                  fontSize: markerSize * 0.6, // Scale the ? text size too
-                }
+                { fontSize: markerSize * 0.6 }
               ]}>?</Text>
             ) : (
               <View
@@ -64,9 +63,19 @@ export default function MobilePOIRenderer({
                     height: markerSize,
                     borderRadius: markerSize / 2,
                   },
+                  isVisited && styles.visitedMarker,
                   selectedPOI?.id === poi.id && styles.selectedMarker,
                 ]}
-              />
+              >
+                {isVisited && (
+                  <Ionicons
+                    name="checkmark"
+                    size={markerSize * 0.5}  // Big tick
+                    color="white"
+                    style={styles.checkmarkIcon}
+                  />
+                )}
+              </View>
             )}
           </MapboxGL.PointAnnotation>
         );
@@ -75,26 +84,31 @@ export default function MobilePOIRenderer({
   );
 }
 
-// Styles for POI markers
 const styles = StyleSheet.create({
-  /* Style for normal (visible) POI marker */
   poiMarker: {
-    backgroundColor: '#F4A261',
+    backgroundColor: '#0077b6', // Default = Blue for unvisited
     borderWidth: 2,
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },
-
-  /* Style for selected POI marker */
   selectedMarker: {
-    backgroundColor: '#2A9D8F',
+    borderColor: '#FFD700', // Highlight selected (gold border maybe?)
+    borderWidth: 3,
   },
-
-  /* Style for hidden POI marker (question mark) */
+  visitedMarker: {
+    backgroundColor: '#32CD32', // BRIGHT FRIENDLY GREEN
+  },
   hiddenMarkerText: {
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
+  },
+  checkmarkIcon: {
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Subtle shadow for pop effect
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 });
