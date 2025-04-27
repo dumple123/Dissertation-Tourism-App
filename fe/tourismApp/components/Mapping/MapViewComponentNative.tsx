@@ -11,6 +11,7 @@ import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
 import { getPOIsForMap } from '~/api/pois';
 import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
+import { useItineraryPOIs } from '~/components/Itinerary/ItineraryPOIProvider';
 
 // Map subcomponents
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
@@ -56,7 +57,8 @@ export default function MapViewComponent() {
   const [pois, setPois] = useState<any[]>([]);
   const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
   const [hasInitialFlyTo, setHasInitialFlyTo] = useState(false);
-  const [isFollowingUser, setIsFollowingUser] = useState(false); // follow user state
+  const [isFollowingUser, setIsFollowingUser] = useState(false);
+  const { itinerary } = useItineraryPOIs();
 
   const markerOpacity = useRef(new Animated.Value(0)).current;
 
@@ -220,40 +222,54 @@ export default function MapViewComponent() {
             )}
 
             {/* Render POIs */}
-            {mapId && pois.length > 0 && (
-              zoomLevel >= 12 ? (
-                <MobilePOIRenderer
-                  pois={pois}
-                  selectedPOI={selectedPOI}
-                  zoomLevel={zoomLevel}
-                  onPOISelect={(poi) => {
-                    setSelectedPOI(poi);
-                    setSelectedBuilding(null);
+            {mapId && (pois.length > 0 || itinerary.length > 0) && ( 
+              (() => {
+                const itineraryPOIsForMap = itinerary.map((poi) => ({
+                  id: poi.id,
+                  name: poi.name,
+                  type: 'itinerary', // important
+                  geojson: {
+                    type: 'Point',
+                    coordinates: poi.coords,
+                  },
+                }));
 
-                    const coords = poi.geojson?.coordinates;
-                    if (coords && coords.length === 2 && cameraRef.current) {
-                      cameraRef.current.flyTo(coords, 1000);
-                      setTimeout(() => {
-                        cameraRef.current?.setCamera({
-                          centerCoordinate: coords,
-                          zoomLevel: Math.max(zoomLevel, 17),
-                          animationDuration: 500,
-                        });
-                      }, 1000);
-                    }
-                  }}
-                />
-              ) : (
-                <MobileClusteredPOIRenderer
-                  pois={pois}
-                  zoomLevel={zoomLevel}
-                  cameraRef={cameraRef}
-                  onPOISelect={(poi) => {
-                    setSelectedPOI(poi);
-                    setSelectedBuilding(null);
-                  }}
-                />
-              )
+                const allPOIs = [...pois, ...itineraryPOIsForMap];
+
+                return zoomLevel >= 12 ? (
+                  <MobilePOIRenderer
+                    pois={allPOIs}
+                    selectedPOI={selectedPOI}
+                    zoomLevel={zoomLevel}
+                    onPOISelect={(poi) => {
+                      setSelectedPOI(poi);
+                      setSelectedBuilding(null);
+
+                      const coords = poi.geojson?.coordinates;
+                      if (coords && coords.length === 2 && cameraRef.current) {
+                        cameraRef.current.flyTo(coords, 1000);
+                        setTimeout(() => {
+                          cameraRef.current?.setCamera({
+                            centerCoordinate: coords,
+                            zoomLevel: Math.max(zoomLevel, 17),
+                            animationDuration: 500,
+                          });
+                        }, 1000);
+                      }
+                    }}
+                  />
+                ) : (
+                  <MobileClusteredPOIRenderer
+                    pois={allPOIs}
+                    zoomLevel={zoomLevel}
+                    cameraRef={cameraRef}
+                    onPOISelect={(poi) => {
+                      setSelectedPOI(poi);
+                      setSelectedBuilding(null);
+                    }}
+                  />
+                );
+              })()
             )}
 
             {/* No POIs fallback */}

@@ -5,13 +5,13 @@ import type { FeatureCollection, Point } from 'geojson';
 
 // Props type definition for the MobileClusteredPOIRenderer component
 type MobileClusteredPOIRendererProps = {
-    pois: any[];
-    onPOISelect?: (poi: any) => void;
-    cameraRef?: React.RefObject<MapboxGL.Camera>;
-    zoomLevel: number;
-  };
+  pois: any[];
+  onPOISelect?: (poi: any) => void;
+  cameraRef?: React.RefObject<MapboxGL.Camera>;
+  zoomLevel: number;
+};
 
-  export default function MobileClusteredPOIRenderer({ pois, onPOISelect, cameraRef, zoomLevel }: MobileClusteredPOIRendererProps) {
+export default function MobileClusteredPOIRenderer({ pois, onPOISelect, cameraRef, zoomLevel }: MobileClusteredPOIRendererProps) {
   // Create GeoJSON FeatureCollection dynamically from POIs
   const poiGeoJSON = useMemo<FeatureCollection<Point>>(() => ({
     type: "FeatureCollection",
@@ -22,6 +22,7 @@ type MobileClusteredPOIRendererProps = {
         id: poi.id,
         name: poi.name,
         hidden: poi.hidden,
+        type: poi.type ?? 'normal', 
       },
     })),
   }), [pois]);
@@ -54,7 +55,7 @@ type MobileClusteredPOIRendererProps = {
           const poi = pois.find((p) => p.id === poiId);
           if (poi) {
             onPOISelect?.(poi);
-      
+
             // Also pan to the POI
             cameraRef?.current?.setCamera({
               centerCoordinate: coordinates,
@@ -93,10 +94,16 @@ type MobileClusteredPOIRendererProps = {
 const layerStyles = {
   /* Style for individual (unclustered) POI markers */
   poiMarker: {
-    iconImage: 'marker-15',
-    iconSize: 0.5,
-    iconAllowOverlap: true,
+    iconImage: [
+      'case',
+      ['==', ['get', 'type'], 'itinerary'],
+      'star-15',   
+      'marker-15', 
+    ],
+    iconSize: 0.6,
     textIgnorePlacement: true,
+    iconAllowOverlap: true, 
+    iconIgnorePlacement: true,
   },
 
   /* Style for clustered points (animated circle pop apart effect) */

@@ -33,47 +33,55 @@ export default function MobilePOIRenderer({
 
   const markerSize = getMarkerSize();
 
+  // Sort POIs: itinerary first, then normal ones
+  const sortedPOIs = [...pois].sort((a, b) => {
+    if (a.type === 'itinerary' && b.type !== 'itinerary') return -1;
+    if (b.type === 'itinerary' && a.type !== 'itinerary') return 1;
+    return 0;
+  });
+
   return (
     <>
-      {pois.map((poi) => {
-        const coords = poi.geojson?.coordinates;
-        if (!coords || coords.length !== 2) return null;
-
-        const isVisited = visitedPOIIds.has(poi.id);
+      {sortedPOIs.map((poi) => {
+        // Always declare hooks first!
         const scaleAnim = useRef(new Animated.Value(1)).current;
         const wasVisited = useRef(false);
+
+        const coords = poi.geojson?.coordinates ?? poi.coords;
+        const isVisited = visitedPOIIds.has(poi.id);
+        const isItinerary = poi.type === 'itinerary';
 
         useEffect(() => {
           if (isVisited && !wasVisited.current) {
             wasVisited.current = true;
             Animated.sequence([
               Animated.timing(scaleAnim, {
-                toValue: 2.2, 
+                toValue: 2.2,
                 duration: 400,
                 useNativeDriver: true,
               }),
               Animated.timing(scaleAnim, {
-                toValue: 0, 
+                toValue: 0,
                 duration: 300,
                 useNativeDriver: true,
               }),
-              Animated.delay(200), 
+              Animated.delay(200),
               Animated.timing(scaleAnim, {
-                toValue: 1.3, 
+                toValue: 1.3,
                 duration: 400,
                 useNativeDriver: true,
               }),
               Animated.timing(scaleAnim, {
-                toValue: 1, 
+                toValue: 1,
                 duration: 300,
                 useNativeDriver: true,
               }),
             ]).start();
           }
         }, [isVisited]);
-        
 
-        const shouldShowNormalMarker = !poi.hidden || isVisited;
+        // Now safe to conditionally return
+        if (!coords || coords.length !== 2) return null;
 
         return (
           <MapboxGL.PointAnnotation
@@ -88,11 +96,11 @@ export default function MobilePOIRenderer({
               <Animated.View
                 style={[
                   { transform: [{ scale: scaleAnim }] },
-                  styles.poiMarker,
+                  isItinerary ? styles.itineraryMarker : styles.poiMarker,
                   {
                     width: markerSize,
                     height: markerSize,
-                    borderRadius: markerSize / 2,
+                    borderRadius: isItinerary ? 6 : markerSize / 2,
                   },
                   isVisited && styles.visitedMarker,
                   selectedPOI?.id === poi.id && styles.selectedMarker,
@@ -117,8 +125,15 @@ export default function MobilePOIRenderer({
 
 const styles = StyleSheet.create({
   poiMarker: {
-    backgroundColor: '#0077b6', 
+    backgroundColor: '#0077b6',
     borderWidth: 2,
+    borderColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itineraryMarker: {
+    backgroundColor: '#800080', 
+    borderWidth: 3,
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
