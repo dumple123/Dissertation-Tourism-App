@@ -22,13 +22,18 @@ export default function MobilePOIRenderer({
   if (!pois || pois.length === 0) return null;
 
   const getMarkerSize = () => {
-    const minZoom = 12;
-    const maxZoom = 20;
-    const minSize = 8;
-    const maxSize = 40;
-    const clampedZoom = Math.min(Math.max(zoomLevel, minZoom), maxZoom);
-    const t = (clampedZoom - minZoom) / (maxZoom - minZoom);
-    return minSize + (maxSize - minSize) * t;
+    if (zoomLevel >= 16) {
+      return 40; 
+    } else if (zoomLevel >= 12) {
+      const minZoom = 12;
+      const maxZoom = 16;
+      const minSize = 12;
+      const maxSize = 40;
+      const t = (zoomLevel - minZoom) / (maxZoom - minZoom);
+      return minSize + (maxSize - minSize) * t; 
+    } else {
+      return 18; 
+    }
   };
 
   const markerSize = getMarkerSize();

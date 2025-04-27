@@ -22,7 +22,7 @@ export default function MobileClusteredPOIRenderer({ pois, onPOISelect, cameraRe
         id: poi.id,
         name: poi.name,
         hidden: poi.hidden,
-        type: poi.type ?? 'normal', 
+        type: poi.type ?? 'normal',
       },
     })),
   }), [pois]);
@@ -46,7 +46,7 @@ export default function MobileClusteredPOIRenderer({ pois, onPOISelect, cameraRe
           // If cluster tapped, zoom in closer manually (no need to call getClusterExpansionZoom)
           cameraRef?.current?.setCamera({
             centerCoordinate: coordinates,
-            zoomLevel: zoomLevel + 2, 
+            zoomLevel: zoomLevel + 2,
             animationDuration: 500,
           });
         } else {
@@ -94,16 +94,20 @@ export default function MobileClusteredPOIRenderer({ pois, onPOISelect, cameraRe
 const layerStyles = {
   /* Style for individual (unclustered) POI markers */
   poiMarker: {
-    iconImage: [
-      'case',
-      ['==', ['get', 'type'], 'itinerary'],
-      'star-15',   
-      'marker-15', 
+    iconImage: 'marker-15',
+    iconSize: [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      0, 1.3,   
+      5, 1.3,
+      10, 1.2,  
+      16, 1.4,   
+      20, 1.6,   
     ],
-    iconSize: 0.6,
-    textIgnorePlacement: true,
-    iconAllowOverlap: true, 
+    iconAllowOverlap: true,
     iconIgnorePlacement: true,
+    textIgnorePlacement: true,
   },
 
   /* Style for clustered points (animated circle pop apart effect) */
