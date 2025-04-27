@@ -10,7 +10,7 @@ import { useBuildings } from './Mobile/Buildings/useBuildings';
 import { useRooms } from './Mobile/Rooms/useRooms';
 import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers';
 import { getPOIsForMap } from '~/api/pois';
-import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext'
+import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
 
 // Map subcomponents
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
@@ -52,10 +52,11 @@ export default function MapViewComponent() {
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [availableFloors, setAvailableFloors] = useState<number[]>([]);
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null);
-  const [zoomLevel, setZoomLevel] = useState(14);
+  const [zoomLevel, setZoomLevel] = useState(8);
   const [pois, setPois] = useState<any[]>([]);
   const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
   const [hasInitialFlyTo, setHasInitialFlyTo] = useState(false);
+  const [isFollowingUser, setIsFollowingUser] = useState(false); // follow user state
 
   const markerOpacity = useRef(new Animated.Value(0)).current;
 
@@ -69,15 +70,15 @@ export default function MapViewComponent() {
     setSelectedMap(map);
     setShowModal(false);
     setSelectedBuilding(null);
-    setPois([]); 
+    setPois([]);
   };
 
-  // Handle return to home if modal closed without selection
+  // Handle return to home if modal closed
   const handleModalCloseToHome = () => {
     router.replace('/');
   };
 
-  // Handle map press (deselect POI and building)
+  // Handle map press (deselect building + poi)
   const handleMapPress = (e: any) => {
     const screenPoint = e.geometry.coordinates;
     console.log('Tapped map at:', screenPoint);
@@ -85,7 +86,7 @@ export default function MapViewComponent() {
     setSelectedPOI(null);
   };
 
-  // Handle building press (select building and deselect POI)
+  // Handle building press
   const handleBuildingPress = (id: string) => {
     const building = buildings.find((b) => b.id === id);
     if (building) {
@@ -95,15 +96,18 @@ export default function MapViewComponent() {
     }
   };
 
-  // Handle region zoom changes for indoor markers visibility
+  // Handle zoom changes
   const handleRegionIsChanging = (e: any) => {
     const zoom = e?.properties?.zoomLevel;
     if (typeof zoom === 'number') {
       setZoomLevel(zoom);
     }
+    if (isFollowingUser) {
+      setIsFollowingUser(false);
+    }
   };
 
-  // Handle available floors when building is selected
+  // Handle available floors when building selected
   useEffect(() => {
     if (selectedBuilding) {
       const { bottomFloor, numFloors } = selectedBuilding;
@@ -118,31 +122,49 @@ export default function MapViewComponent() {
     }
   }, [selectedBuilding]);
 
-  // Fly the camera to user location after a small delay once GPS coordinates are available
+  // Fly to user location after map is selected
   useEffect(() => {
     if (!coords || !selectedMap || hasInitialFlyTo) return;
-  
+
     const [lng, lat] = coords;
-    const isValidLocation =
-      lat !== 0 &&
-      lng !== 0 &&
-      lat >= -90 && lat <= 90 &&
-      lng >= -180 && lng <= 180;
-  
+    const isValidLocation = lat !== 0 && lng !== 0 && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
     if (!isValidLocation) {
       console.warn('Ignoring invalid location:', coords);
       return;
     }
-  
+
     const timeout = setTimeout(() => {
-      cameraRef.current?.flyTo(coords, 3000); 
-      setHasInitialFlyTo(true); 
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: coords,
+          zoomLevel: 16,
+          animationDuration: 3000,
+        });
+        setHasInitialFlyTo(true);
+      }
     }, 1000);
-  
+
     return () => clearTimeout(timeout);
   }, [coords, selectedMap, hasInitialFlyTo]);
 
-  // Load POIs when map is selected
+  // Follow user if following is enabled
+  useEffect(() => {
+    if (!coords || !selectedMap || !isFollowingUser) return;
+
+    const timeout = setTimeout(() => {
+      if (cameraRef.current) {
+        cameraRef.current.setCamera({
+          centerCoordinate: coords,
+          zoomLevel: 16,
+          animationDuration: 500,
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(timeout);
+  }, [coords, selectedMap, isFollowingUser]);
+
+  // Load POIs when map selected
   useEffect(() => {
     if (!selectedMap) return;
 
@@ -180,7 +202,6 @@ export default function MapViewComponent() {
             <MapboxGL.Camera
               ref={cameraRef}
               centerCoordinate={coords}
-              zoomLevel={14}
               animationMode="flyTo"
               animationDuration={1000}
             />
@@ -235,14 +256,14 @@ export default function MapViewComponent() {
               )
             )}
 
-            {/* Show "No POIs found" if empty */}
+            {/* No POIs fallback */}
             {mapId && pois.length === 0 && (
               <View style={styles.noPoisContainer}>
                 <Text style={styles.noPoisText}>No POIs found for this map.</Text>
               </View>
             )}
 
-            {/* Render saved rooms and interior markers */}
+            {/* Render saved rooms */}
             {selectedBuilding && selectedFloor !== null && (
               <>
                 <MobileSavedRoomsRenderer rooms={filteredRooms} />
@@ -257,16 +278,21 @@ export default function MapViewComponent() {
             )}
           </MapboxGL.MapView>
 
-          {/* POI Progress Tracker */}
+          {/* POI progress circle */}
           <View style={styles.poiProgressWrapper}>
             <POIProgressCircle />
           </View>
 
-          {/* Add Locate Me button under floor selector */}
+          {/* Locate Me button */}
           <LocateMeButton
             onPress={() => {
               if (coords && cameraRef.current) {
-                cameraRef.current.flyTo(coords, 3000); 
+                setIsFollowingUser(true);
+                cameraRef.current.setCamera({
+                  centerCoordinate: coords,
+                  zoomLevel: 16,
+                  animationDuration: 3000,
+                });
               }
             }}
           />
@@ -277,7 +303,7 @@ export default function MapViewComponent() {
         </View>
       )}
 
-      {/* Show map selector modal ONLY if no map is selected */}
+      {/* Show map selector */}
       {Platform.OS !== 'web' && !selectedMap && (
         <MapSelectorModal
           isVisible={showModal}
@@ -286,7 +312,7 @@ export default function MapViewComponent() {
         />
       )}
 
-      {/* Show floor selector if building selected */}
+      {/* Show floor selector */}
       {selectedBuilding && availableFloors.length > 0 && selectedFloor !== null && (
         <FloorSelector
           availableFloors={availableFloors}
@@ -295,7 +321,7 @@ export default function MapViewComponent() {
         />
       )}
 
-      {/* Show POI Popup Modal if a POI is selected */}
+      {/* Show POI popup */}
       {selectedPOI && (
         <POIPopupModal
           poi={selectedPOI}
@@ -303,7 +329,6 @@ export default function MapViewComponent() {
         />
       )}
     </View>
-
   );
 }
 
@@ -359,6 +384,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 20,
     left: 20,
-    zIndex: 10, 
-  }
+    zIndex: 10,
+  },
 });
