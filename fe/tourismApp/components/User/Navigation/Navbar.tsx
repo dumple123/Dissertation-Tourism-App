@@ -34,7 +34,7 @@ const navItems = [
   },
   {
     label: 'Profile',
-    path: '/(auth)/Profile',
+    path: '/(auth)/profile',
     icon: (color: string) => <FontAwesome name="user" size={24} color={color} />,
   },
 ] as const;
