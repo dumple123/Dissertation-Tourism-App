@@ -70,7 +70,7 @@ export default function POIProgressCircle() {
         <Text
           style={[
             styles.percentageText,
-            showRawCount && styles.rawCountText, // Smaller when showing x/y
+            showRawCount && styles.rawCountText, 
           ]}
           numberOfLines={2}
           adjustsFontSizeToFit
