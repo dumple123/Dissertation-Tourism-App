@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaView, Text } from 'react-native';
-import POIFeed from '~/components/Feeds/POIFeed';
+import POIFeed from '~/components/Feed/POIFeed';
 
 export default function FeedPage() {
   return (
