@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import MapboxGL from '@rnmapbox/maps';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -40,7 +40,40 @@ export default function MobilePOIRenderer({
         if (!coords || coords.length !== 2) return null;
 
         const isVisited = visitedPOIIds.has(poi.id);
-        const shouldShowAsNormal = !poi.hidden || isVisited;
+        const scaleAnim = useRef(new Animated.Value(1)).current;
+        const wasVisited = useRef(false);
+
+        useEffect(() => {
+          if (isVisited && !wasVisited.current) {
+            wasVisited.current = true;
+            Animated.sequence([
+              Animated.timing(scaleAnim, {
+                toValue: 2.2, 
+                duration: 400,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 0, 
+                duration: 300,
+                useNativeDriver: true,
+              }),
+              Animated.delay(200), 
+              Animated.timing(scaleAnim, {
+                toValue: 1.3, 
+                duration: 400,
+                useNativeDriver: true,
+              }),
+              Animated.timing(scaleAnim, {
+                toValue: 1, 
+                duration: 300,
+                useNativeDriver: true,
+              }),
+            ]).start();
+          }
+        }, [isVisited]);
+        
+
+        const shouldShowNormalMarker = !poi.hidden || isVisited;
 
         return (
           <MapboxGL.PointAnnotation
@@ -49,14 +82,12 @@ export default function MobilePOIRenderer({
             coordinate={[coords[0], coords[1]]}
             onSelected={() => onPOISelect?.(poi)}
           >
-            {poi.hidden ? (
-              <Text style={[
-                styles.hiddenMarkerText,
-                { fontSize: markerSize * 0.6 }
-              ]}>?</Text>
+            {poi.hidden && !isVisited ? (
+              <Text style={[styles.hiddenMarkerText, { fontSize: markerSize * 0.6 }]}>?</Text>
             ) : (
-              <View
+              <Animated.View
                 style={[
+                  { transform: [{ scale: scaleAnim }] },
                   styles.poiMarker,
                   {
                     width: markerSize,
@@ -70,12 +101,12 @@ export default function MobilePOIRenderer({
                 {isVisited && (
                   <Ionicons
                     name="checkmark"
-                    size={markerSize * 0.5}  // Big tick
+                    size={markerSize * 0.5}
                     color="white"
                     style={styles.checkmarkIcon}
                   />
                 )}
-              </View>
+              </Animated.View>
             )}
           </MapboxGL.PointAnnotation>
         );
@@ -86,18 +117,18 @@ export default function MobilePOIRenderer({
 
 const styles = StyleSheet.create({
   poiMarker: {
-    backgroundColor: '#0077b6', // Default = Blue for unvisited
+    backgroundColor: '#0077b6', 
     borderWidth: 2,
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectedMarker: {
-    borderColor: '#FFD700', // Highlight selected (gold border maybe?)
+    borderColor: '#FFD700', 
     borderWidth: 3,
   },
   visitedMarker: {
-    backgroundColor: '#32CD32', // BRIGHT FRIENDLY GREEN
+    backgroundColor: '#2ecc71', 
   },
   hiddenMarkerText: {
     fontWeight: 'bold',
@@ -107,7 +138,7 @@ const styles = StyleSheet.create({
   checkmarkIcon: {
     textAlign: 'center',
     textAlignVertical: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)', // Subtle shadow for pop effect
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
   },
