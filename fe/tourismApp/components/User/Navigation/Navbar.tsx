@@ -1,11 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
 import { Link } from 'expo-router';
 import {
   FontAwesome,
   MaterialCommunityIcons,
   Entypo,
-  Feather,
 } from '@expo/vector-icons';
 import { useTheme } from '~/components/Styles/themeContext';
 
@@ -15,20 +14,23 @@ const navItems = [
     path: '/(auth)/',
     icon: (color: string) => <FontAwesome name="home" size={24} color={color} />,
   },
-  {
-    label: 'Itinerary',
-    path: '/(auth)/Itinerary',
-    icon: (color: string) => <MaterialCommunityIcons name="clipboard-text" size={24} color={color} />,
-  },
+  // Itinerary tab only shown on mobile
+  ...(Platform.OS !== 'web'
+    ? [{
+        label: 'Itinerary',
+        path: '/(auth)/Itinerary',
+        icon: (color: string) => <MaterialCommunityIcons name="clipboard-text" size={24} color={color} />,
+      }]
+    : []),
   {
     label: 'Map',
     path: '/(auth)/Map',
     icon: (color: string) => <Entypo name="map" size={24} color={color} />,
   },
   {
-    label: 'Social',
+    label: 'Feed',
     path: '/(auth)/feed',
-    icon: (color: string) => <Feather name="rss" size={24} color={color} />,
+    icon: (color: string) => <MaterialCommunityIcons name="view-list" size={24} color={color} />,
   },
   {
     label: 'Profile',
