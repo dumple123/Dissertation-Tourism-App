@@ -7,30 +7,32 @@ type ItineraryItem = {
 };
 
 type ItineraryListProps = {
-  itinerary: ItineraryItem[];
-  onDeleteItem?: (index: number) => void;
-};
+    itinerary: ItineraryItem[];
+    onDeleteItem?: (index: number) => void;
+    ListFooterComponent?: React.ReactElement | null;
+  };
 
-export default function ItineraryList({ itinerary, onDeleteItem }: ItineraryListProps) {
-  return (
-    <FlatList
-      data={itinerary}
-      keyExtractor={(item, index) => `${item.name}-${index}`}
-      renderItem={({ item, index }) => (
-        <View style={styles.item}>
-          <Text style={styles.itemText}>{item.name}</Text>
-          {onDeleteItem && (
-            <TouchableOpacity onPress={() => onDeleteItem(index)} style={styles.deleteButton}>
-              <Text style={styles.deleteButtonText}>×</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-      ListEmptyComponent={<Text style={styles.emptyText}>No places added yet.</Text>}
-      keyboardShouldPersistTaps="handled"
-    />
-  );
-}
+export default function ItineraryList({ itinerary, onDeleteItem, ListFooterComponent }: ItineraryListProps) {
+    return (
+      <FlatList
+        data={itinerary}
+        keyExtractor={(item, index) => `${item.name}-${index}`}
+        renderItem={({ item, index }) => (
+          <View style={styles.item}>
+            <Text style={styles.itemText}>{item.name}</Text>
+            {onDeleteItem && (
+              <TouchableOpacity onPress={() => onDeleteItem(index)} style={styles.deleteButton}>
+                <Text style={styles.deleteButtonText}>×</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+        ListEmptyComponent={<Text style={styles.emptyText}>No places added yet.</Text>}
+        ListFooterComponent={ListFooterComponent}
+        keyboardShouldPersistTaps="handled"
+      />
+    );
+  }
 
 const styles = StyleSheet.create({
   item: {
