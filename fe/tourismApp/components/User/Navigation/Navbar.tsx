@@ -27,7 +27,7 @@ const navItems = [
   },
   {
     label: 'Social',
-    path: '/(auth)/Social',
+    path: '/(auth)/feed',
     icon: (color: string) => <Feather name="rss" size={24} color={color} />,
   },
   {
