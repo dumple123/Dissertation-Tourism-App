@@ -26,8 +26,9 @@ const POIFeed: React.FC<POIFeedProps> = ({ userId, limit = 10 }) => {
           ? await getLatestUserPOIVisits(userId, limit)
           : await getLatestPOIVisits(limit);
 
-        console.log('Fetched visits:', data); 
+        console.log('Fetched visits:', data);
         setVisits(data);
+        console.log('Visits fetched in POIFeed:', data);
       } catch (error) {
         console.error(error);
       } finally {
@@ -61,13 +62,14 @@ const POIFeed: React.FC<POIFeedProps> = ({ userId, limit = 10 }) => {
           data={visits}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 100 }}
+          style={{ flexGrow: 1 }}
           renderItem={({ item }) => {
             const isNew = isToday(item.visitedAt);
 
             return (
               <View style={styles.card}>
                 <View style={styles.headerRow}>
-                  <Text style={styles.poiName}>🗺️ {item?.poi?.name ?? 'Unknown POI'}</Text>
+                  <Text style={styles.poiName}>{item?.poi?.name ?? 'Unknown POI'}</Text>
                   {isNew && (
                     <View style={styles.newBadge}>
                       <Text style={styles.newBadgeText}>NEW</Text>
@@ -77,7 +79,7 @@ const POIFeed: React.FC<POIFeedProps> = ({ userId, limit = 10 }) => {
 
                 {!userId && (
                   <Text style={styles.visitor}>
-                    👤 {item?.user?.username ?? 'Unknown User'}
+                    {item?.user?.username ?? 'Unknown User'}
                   </Text>
                 )}
 
@@ -93,7 +95,6 @@ const POIFeed: React.FC<POIFeedProps> = ({ userId, limit = 10 }) => {
   );
 };
 
-// 🔥 Helper function to check if a date is today
 function isToday(dateString: string): boolean {
   const today = new Date();
   const date = new Date(dateString);
@@ -140,7 +141,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3, // Android shadow
+    elevation: 3,
     borderWidth: 1,
     borderColor: '#eee',
   },

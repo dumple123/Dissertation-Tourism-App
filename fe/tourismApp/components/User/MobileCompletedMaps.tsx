@@ -83,7 +83,6 @@ export default function CompletedMapsProfile({ userId }: { userId: string }) {
 
         {completedMaps.map(map => {
           const center = getCenter(map.pois);
-          console.log('Center for map:', map.name, center);
           return (
             <MapboxGL.PointAnnotation
               key={map.id}
