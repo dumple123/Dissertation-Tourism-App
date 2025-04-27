@@ -35,21 +35,25 @@ export default function CompletedMapsProfile({ userId }: { userId: string }) {
   const getCenter = (pois: { geojson: any }[]) => {
     const coords = pois
       .map(poi => {
-        if (poi?.geojson?.coordinates && Array.isArray(poi.geojson.coordinates)) {
+        if (
+          poi?.geojson?.coordinates &&
+          Array.isArray(poi.geojson.coordinates) &&
+          poi.geojson.coordinates.length === 2
+        ) {
           const [lng, lat] = poi.geojson.coordinates;
-          return { lat, lng };
+          return { lat, lng }; 
         }
         return null;
       })
       .filter((c): c is { lat: number; lng: number } => c !== null);
-
+  
     if (coords.length === 0) {
       return { latitude: 0, longitude: 0 };
     }
-
+  
     const avgLat = coords.reduce((sum, c) => sum + c.lat, 0) / coords.length;
     const avgLng = coords.reduce((sum, c) => sum + c.lng, 0) / coords.length;
-
+  
     return { latitude: avgLat, longitude: avgLng };
   };
 
@@ -79,6 +83,7 @@ export default function CompletedMapsProfile({ userId }: { userId: string }) {
 
         {completedMaps.map(map => {
           const center = getCenter(map.pois);
+          console.log('Center for map:', map.name, center);
           return (
             <MapboxGL.PointAnnotation
               key={map.id}
