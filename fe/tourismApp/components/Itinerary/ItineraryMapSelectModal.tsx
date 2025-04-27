@@ -19,25 +19,48 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
   const { addPOI } = useItineraryPOIs();
   const { coords: userCoords } = useLocation();
   const [selectedCoords, setSelectedCoords] = useState<[number, number] | null>(null);
+  const [selectedPlaceName, setSelectedPlaceName] = useState<string | null>(null);
   const cameraRef = useRef<MapboxGL.Camera>(null);
 
-  const handleMapPress = (e: any) => {
+  const handleMapPress = async (e: any) => {
     const coords = e.geometry.coordinates;
     setSelectedCoords(coords);
+
+    try {
+      const accessToken = Constants.expoConfig?.extra?.MAPBOX_ACCESS_TOKEN;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${coords[0]},${coords[1]}.json?access_token=${accessToken}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+      const placeName = data.features?.[0]?.place_name ?? null;
+
+      if (placeName) {
+        setSelectedPlaceName(placeName);
+      } else {
+        setSelectedPlaceName(null);
+      }
+    } catch (error) {
+      console.error('Failed to reverse geocode location:', error);
+      setSelectedPlaceName(null);
+    }
   };
 
   const handleConfirm = async () => {
     if (!selectedCoords) return;
+
     await addPOI({
-      name: `Pinned (${selectedCoords[1].toFixed(5)}, ${selectedCoords[0].toFixed(5)})`,
+      name: selectedPlaceName || `Pinned (${selectedCoords[1].toFixed(5)}, ${selectedCoords[0].toFixed(5)})`,
       coords: selectedCoords,
     });
+
     setSelectedCoords(null);
+    setSelectedPlaceName(null);
     onClose();
   };
 
   const handleCancel = () => {
     setSelectedCoords(null);
+    setSelectedPlaceName(null);
     onClose();
   };
 
@@ -59,6 +82,15 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
       onRequestClose={handleCancel}
     >
       <View style={styles.container}>
+        {/* Top Text Box */}
+        {selectedCoords && (
+          <View style={styles.locationInfoBox}>
+            <Text style={styles.locationInfoText}>
+              {selectedPlaceName || `Pinned (${selectedCoords[1].toFixed(5)}, ${selectedCoords[0].toFixed(5)})`}
+            </Text>
+          </View>
+        )}
+
         <MapboxGL.MapView
           style={styles.map}
           onPress={handleMapPress}
@@ -84,7 +116,7 @@ export default function ItineraryMapSelectModal({ visible, onClose }: ItineraryM
           )}
         </MapboxGL.MapView>
 
-        {/* Locate Me button in top right corner */}
+        {/* Locate Me button */}
         <View style={styles.locateButtonWrapper}>
           <LocateMeButton onPress={handleLocateMe} />
         </View>
@@ -152,8 +184,28 @@ const styles = StyleSheet.create({
   },
   locateButtonWrapper: {
     position: 'absolute',
-    right: 0,
-    bottom: 70,
+    right: 20,
+    bottom: 100,
     zIndex: 10,
+  },
+  locationInfoBox: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    padding: 8,
+    borderRadius: 8,
+    elevation: 3,
+    zIndex: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  locationInfoText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
   },
 });
