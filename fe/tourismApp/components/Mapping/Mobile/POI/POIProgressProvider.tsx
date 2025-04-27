@@ -53,7 +53,7 @@ export const POIProgressProvider = ({ children }: { children: ReactNode }) => {
     pois,
     userId: user?.id ?? '',
     visitedPOIIds,
-    radiusMeters: 25,
+    radiusMeters: 30,
     refreshProgress,
   });
 

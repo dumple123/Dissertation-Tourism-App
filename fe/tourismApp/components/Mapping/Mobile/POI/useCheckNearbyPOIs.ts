@@ -22,7 +22,7 @@ export function useCheckNearbyPOIs({
   pois,
   userId,
   visitedPOIIds,
-  radiusMeters = 25,
+  radiusMeters = 30,
   refreshProgress,
 }: UseCheckNearbyPOIsOptions) {
   const { coords } = useLocation();
