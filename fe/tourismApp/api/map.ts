@@ -19,3 +19,13 @@ export const getMaps = async () => {
     throw new Error(err.response?.data?.error || "Failed to fetch maps");
   }
 };
+
+// Get all maps where user has completed 50% or more
+export const getUserCompletedMaps = async (userId: string) => {
+  try {
+    const res = await axiosInstance.get(`/api/maps/completed/${userId}`);
+    return res.data;
+  } catch (err: any) {
+    throw new Error(err.response?.data?.error || "Failed to fetch completed maps");
+  }
+};

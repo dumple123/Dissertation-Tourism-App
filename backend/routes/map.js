@@ -29,7 +29,7 @@ router.get("/", verifyToken, async (req, res) => {
   try {
     const maps = await prisma.map.findMany({
       include: {
-        buildings: true, // optionally limit fields if needed
+        buildings: true,
       },
     });
 
@@ -37,6 +37,53 @@ router.get("/", verifyToken, async (req, res) => {
   } catch (err) {
     console.error("Error fetching maps:", err);
     res.status(500).json({ error: "Failed to fetch maps" });
+  }
+});
+
+// ➡️ NEW: Get all maps that a user has completed at least 50%
+router.get("/completed/:userId", verifyToken, async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    // Fetch all maps and their POIs
+    const maps = await prisma.map.findMany({
+      include: {
+        pois: {
+          select: {
+            id: true,
+            geojson: true,
+          },
+        },
+      },
+    });
+
+    // Fetch user POI visits
+    const userProgress = await prisma.user_POI_Progress.findMany({
+      where: { userId },
+      select: { poiId: true },
+    });
+
+    const visitedPOIIds = new Set(userProgress.map(progress => progress.poiId));
+
+    const completedMaps = maps
+      .map(map => {
+        const totalPOIs = map.pois.length;
+        const visitedPOIs = map.pois.filter(poi => visitedPOIIds.has(poi.id)).length;
+        const completionRate = totalPOIs === 0 ? 0 : visitedPOIs / totalPOIs;
+
+        return {
+          id: map.id,
+          name: map.name,
+          completionRate,
+          pois: map.pois,
+        };
+      })
+      .filter(map => map.completionRate >= 0.5); // Keep only maps completed 50%+
+
+    res.json(completedMaps);
+  } catch (err) {
+    console.error("Error fetching completed maps:", err);
+    res.status(500).json({ error: "Failed to fetch completed maps" });
   }
 });
 
