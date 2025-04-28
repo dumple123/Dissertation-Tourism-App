@@ -182,7 +182,6 @@ export default function MapViewComponent() {
           >
             <MapboxGL.Camera
               ref={cameraRef}
-              centerCoordinate={coords}
               animationMode="flyTo"
               animationDuration={1000}
             />
