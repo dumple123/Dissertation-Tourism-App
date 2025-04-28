@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { FeatureCollection } from 'geojson';
 import area from '@turf/area';
@@ -27,27 +27,33 @@ interface Props {
 
 export default function SavedRoomsRenderer({ map, rooms }: Props) {
   const { isDrawing } = useDrawingContext();
-  const [refreshKey, setRefreshKey] = useState(0);
-
   const sourceId = 'saved-rooms';
   const fillId = 'saved-rooms-fill';
   const outlineId = 'saved-rooms-outline';
-
   const labelSourceId = 'saved-room-labels';
   const labelId = 'saved-rooms-label';
 
-  // Zoom listener for label refresh
+  // render room shapes (fill and outline)
   useEffect(() => {
-    const update = () => setRefreshKey((n) => n + 1);
-    map.on('zoom', update);
-    return () => {
-      map.off('zoom', update);
-    };
-  }, [map]);
+    if (!map) return;
 
-  // Render room shapes (fill and outline)
-  useEffect(() => {
-    if (rooms.length === 0) return;
+    // cleanup old layers and sources
+    const cleanup = () => {
+      try {
+        if (map.getLayer(fillId)) map.removeLayer(fillId);
+        if (map.getLayer(outlineId)) map.removeLayer(outlineId);
+        if (map.getLayer(labelId)) map.removeLayer(labelId);
+
+        if (map.getSource(sourceId)) map.removeSource(sourceId);
+        if (map.getSource(labelSourceId)) map.removeSource(labelSourceId);
+      } catch (err) {
+        console.warn('error cleaning up old room layers:', err);
+      }
+    };
+
+    cleanup(); // always cleanup first
+
+    if (rooms.length === 0) return; // nothing to draw if no rooms
 
     const features: FeatureCollection = {
       type: 'FeatureCollection',
@@ -60,75 +66,47 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
           buildingId: r.buildingId,
           accessible: r.accessible,
           isArea: r.isArea,
+          name: r.name,
         },
       })),
     };
 
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, {
-        type: 'geojson',
-        data: features,
-      });
+    // add source
+    map.addSource(sourceId, { type: 'geojson', data: features });
 
-      map.addLayer({
-        id: fillId,
-        type: 'fill',
-        source: sourceId,
-        paint: {
-          'fill-color': [
-            'case',
-            ['==', ['get', 'accessible'], false],
-            '#e63946',
-            '#219ebc',
-          ],
-          'fill-opacity': 0.4,
-          'fill-pattern': [
-            'case',
-            ['==', ['get', 'accessible'], false],
-            'diagonal-stripe',
-            '',
-          ],
-        },
-      });
+    // add fill layer
+    map.addLayer({
+      id: fillId,
+      type: 'fill',
+      source: sourceId,
+      paint: {
+        'fill-color': [
+          'case',
+          ['==', ['get', 'accessible'], false],
+          '#e63946',
+          '#219ebc',
+        ],
+        'fill-opacity': 0.4,
+        'fill-pattern': [
+          'case',
+          ['==', ['get', 'accessible'], false],
+          'diagonal-stripe',
+          '',
+        ],
+      },
+    });
 
-      map.addLayer({
-        id: outlineId,
-        type: 'line',
-        source: sourceId,
-        filter: ['==', ['get', 'isArea'], false],
-        paint: {
-          'line-color': '#023047',
-          'line-width': 1.5,
-        },
-      });
-
-      // Add striped image pattern if missing
-      if (!map.hasImage('diagonal-stripe')) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 8;
-        canvas.height = 8;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.strokeStyle = 'rgba(230, 57, 70, 0.5)';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(0, 8);
-          ctx.lineTo(8, 0);
-          ctx.stroke();
-        }
-        createImageBitmap(canvas).then((imageBitmap) => {
-          map.addImage('diagonal-stripe', imageBitmap, { pixelRatio: 2 });
-        });
-      }
-    } else {
-      const source = map.getSource(sourceId) as mapboxgl.GeoJSONSource;
-      source.setData(features);
-    }
-  }, [map, rooms]);
-
-  // Render and update labels
-  useEffect(() => {
-    if (rooms.length === 0) return;
+    // add outline layer
+    map.addLayer({
+      id: outlineId,
+      type: 'line',
+      source: sourceId,
+      filter: ['==', ['get', 'isArea'], false],
+      paint: {
+        'line-color': '#023047',
+        'line-width': 1.5,
+      },
+    });
 
     const zoom = map.getZoom();
     const MIN_AREA_METERS = 10;
@@ -167,38 +145,56 @@ export default function SavedRoomsRenderer({ map, rooms }: Props) {
       }),
     };
 
-    if (!map.getSource(labelSourceId)) {
-      map.addSource(labelSourceId, {
-        type: 'geojson',
-        data: labelFeatures,
-      });
+    // add label source
+    map.addSource(labelSourceId, { type: 'geojson', data: labelFeatures });
 
-      map.addLayer({
-        id: labelId,
-        type: 'symbol',
-        source: labelSourceId,
-        layout: {
-          'text-field': ['get', 'name'],
-          'text-size': 12,
-          'text-max-width': 6,
-          'text-anchor': 'center',
-          'text-justify': 'center',
-          'text-offset': [0, 0],
-          'text-allow-overlap': false,
-          'symbol-placement': 'point',
-          'symbol-avoid-edges': true,
-        },
-        paint: {
-          'text-color': '#000',
-          'text-halo-color': '#fff',
-          'text-halo-width': 1.5,
-        },
+    // add label layer
+    map.addLayer({
+      id: labelId,
+      type: 'symbol',
+      source: labelSourceId,
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-size': 12,
+        'text-max-width': 6,
+        'text-anchor': 'center',
+        'text-justify': 'center',
+        'text-offset': [0, 0],
+        'text-allow-overlap': false,
+        'symbol-placement': 'point',
+        'symbol-avoid-edges': true,
+      },
+      paint: {
+        'text-color': '#000',
+        'text-halo-color': '#fff',
+        'text-halo-width': 1.5,
+      },
+    });
+
+    // add striped image pattern if missing
+    if (!map.hasImage('diagonal-stripe')) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 8;
+      canvas.height = 8;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.strokeStyle = 'rgba(230, 57, 70, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 8);
+        ctx.lineTo(8, 0);
+        ctx.stroke();
+      }
+      createImageBitmap(canvas).then((imageBitmap) => {
+        map.addImage('diagonal-stripe', imageBitmap, { pixelRatio: 2 });
       });
-    } else {
-      const source = map.getSource(labelSourceId) as mapboxgl.GeoJSONSource;
-      source.setData(labelFeatures);
     }
-  }, [map, rooms, refreshKey]);
+
+    // cleanup on unmount
+    return () => {
+      cleanup();
+    };
+  }, [map, rooms]);
 
   return null;
 }
