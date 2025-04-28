@@ -149,23 +149,6 @@ export default function MapViewComponent() {
     return () => clearTimeout(timeout);
   }, [coords, selectedMap, hasInitialFlyTo]);
 
-  // Follow user if following is enabled
-  useEffect(() => {
-    if (!coords || !selectedMap || !isFollowingUser) return;
-
-    const timeout = setTimeout(() => {
-      if (cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: coords,
-          zoomLevel: 16,
-          animationDuration: 500,
-        });
-      }
-    }, 500);
-
-    return () => clearTimeout(timeout);
-  }, [coords, selectedMap, isFollowingUser]);
-
   // Load POIs when map selected
   useEffect(() => {
     if (!selectedMap) return;
@@ -301,13 +284,20 @@ export default function MapViewComponent() {
 
           {/* Locate Me button */}
           <LocateMeButton
-            onPress={() => {
-              if (coords && cameraRef.current) {
+            isFollowingUser={isFollowingUser}
+            onToggleFollow={() => {
+              if (!coords || !cameraRef.current) return;
+
+              if (isFollowingUser) {
+                // Currently following, turn it off
+                setIsFollowingUser(false);
+              } else {
+                // Not following, turn it on + move camera
                 setIsFollowingUser(true);
                 cameraRef.current.setCamera({
                   centerCoordinate: coords,
                   zoomLevel: 16,
-                  animationDuration: 3000,
+                  animationDuration: 1500,
                 });
               }
             }}
