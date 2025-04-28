@@ -63,6 +63,8 @@ const POIFeed: React.FC<POIFeedProps> = ({ userId, limit = 10 }) => {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 100 }}
           style={{ flexGrow: 1 }}
+          nestedScrollEnabled={true}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const isNew = isToday(item.visitedAt);
 
