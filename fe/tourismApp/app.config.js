@@ -58,6 +58,10 @@ export default {
       API_URL: process.env.EXPO_PUBLIC_API_URL,
       MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN,
       MAPBOX_DOWNLOAD_TOKEN: process.env.MAPBOX_DOWNLOAD_TOKEN,
+      
+      eas: {
+        projectId: "c9508851-2f06-4974-b5c9-3d34ba1149ba",
+      },
     },
   },
 };
