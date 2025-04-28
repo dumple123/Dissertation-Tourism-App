@@ -3,19 +3,14 @@ import { TouchableOpacity, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 type LocateMeButtonProps = {
-  isFollowingUser: boolean;
-  onToggleFollow: () => void;
+  onPress: () => void; 
 };
 
-export default function LocateMeButton({ isFollowingUser, onToggleFollow }: LocateMeButtonProps) {
+export default function LocateMeButton({ onPress }: LocateMeButtonProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity onPress={onToggleFollow} style={styles.button}>
-        <Ionicons
-          name={isFollowingUser ? "locate" : "locate-outline"}
-          size={24}
-          color="white"
-        />
+      <TouchableOpacity onPress={onPress} style={styles.button}>
+        <Ionicons name="locate" size={24} color="white" />
       </TouchableOpacity>
     </View>
   );

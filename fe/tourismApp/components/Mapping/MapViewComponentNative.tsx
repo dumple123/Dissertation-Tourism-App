@@ -57,7 +57,6 @@ export default function MapViewComponent() {
   const [pois, setPois] = useState<any[]>([]);
   const [selectedPOI, setSelectedPOI] = useState<any | null>(null);
   const [hasInitialFlyTo, setHasInitialFlyTo] = useState(false);
-  const [isFollowingUser, setIsFollowingUser] = useState(false);
   const { itinerary } = useItineraryPOIs();
 
   const markerOpacity = useRef(new Animated.Value(0)).current;
@@ -103,9 +102,6 @@ export default function MapViewComponent() {
     const zoom = e?.properties?.zoomLevel;
     if (typeof zoom === 'number') {
       setZoomLevel(zoom);
-    }
-    if (isFollowingUser) {
-      setIsFollowingUser(false);
     }
   };
 
@@ -284,16 +280,8 @@ export default function MapViewComponent() {
 
           {/* Locate Me button */}
           <LocateMeButton
-            isFollowingUser={isFollowingUser}
-            onToggleFollow={() => {
-              if (!coords || !cameraRef.current) return;
-
-              if (isFollowingUser) {
-                // Currently following, turn it off
-                setIsFollowingUser(false);
-              } else {
-                // Not following, turn it on + move camera
-                setIsFollowingUser(true);
+            onPress={() => {
+              if (coords && cameraRef.current) {
                 cameraRef.current.setCamera({
                   centerCoordinate: coords,
                   zoomLevel: 16,
