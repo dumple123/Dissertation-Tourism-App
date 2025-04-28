@@ -10,18 +10,7 @@ interface MobileUserPuckProps {
 }
 
 export default function MobileUserPuck({ coords, heading = 0 }: MobileUserPuckProps) {
-  const [smoothedCoords, setSmoothedCoords] = useState<[number, number]>(coords);
-
-  useEffect(() => {
-    const SMOOTHING_FACTOR = 0.2;
-    setSmoothedCoords((prev) => {
-      if (!prev) return coords;
-      return [
-        prev[0] + (coords[0] - prev[0]) * SMOOTHING_FACTOR,
-        prev[1] + (coords[1] - prev[1]) * SMOOTHING_FACTOR,
-      ];
-    });
-  }, [coords]);
+  const smoothedCoords = coords;
 
   if (!coords) return null;
 
