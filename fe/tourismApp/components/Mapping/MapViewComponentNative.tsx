@@ -12,6 +12,9 @@ import { useInteriorMarkers } from './Mobile/InteriorMarkers/useInteriorMarkers'
 import { getPOIsForMap } from '~/api/pois';
 import { useSelectedMap } from '~/components/Mapping/Mobile/SelectedMapContext';
 import { useItineraryPOIs } from '~/components/Itinerary/ItineraryPOIProvider';
+import MapSearchBar, { SearchableItem } from '~/components/Mapping/Mobile/MapSearchBar'; // Adjust path if needed
+import centroid from '@turf/centroid';
+import { Feature, Polygon, MultiPolygon } from 'geojson';
 
 // Map subcomponents
 import MobileSavedBuildingsRenderer from './Mobile/Buildings/MobileSavedBuildingsRenderer';
@@ -166,6 +169,30 @@ export default function MapViewComponent() {
 
   return (
     <View style={styles.container}>
+
+      {/* Map Search Bar */}
+      <MapSearchBar
+        buildings={buildings}
+        rooms={rooms}
+        pois={pois}
+        itineraryPOIs={itinerary}
+        mapId={mapId}
+        onSelect={(item) => {
+          if (item.type === 'building' || item.type === 'room') {
+            const building = buildings.find((b) => b.id === item.buildingId);
+            if (building) {
+              setSelectedBuilding(building);
+              if (item.type === 'room' && item.floor !== undefined) {
+                setSelectedFloor(item.floor);
+              }
+            }
+          }
+          if (item.coords && cameraRef.current) {
+            cameraRef.current.flyTo(item.coords, 1000);
+          }
+        }}
+      />
+
       {coords && Array.isArray(coords) && coords[0] !== 0 && coords[1] !== 0 ? (
         <>
           <MapboxGL.MapView
@@ -375,8 +402,8 @@ const styles = StyleSheet.create({
   },
   poiProgressWrapper: {
     position: 'absolute',
-    top: 20,
-    left: 20,
+    top: 80,
+    right: 20,
     zIndex: 10,
   },
 });
