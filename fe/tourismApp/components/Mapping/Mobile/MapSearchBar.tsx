@@ -55,6 +55,8 @@ interface MapSearchBarProps {
 export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, mapId, userCoords, placeholder, onSelect }: MapSearchBarProps) {
   const [query, setQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTab, setSelectedTab] = useState<'buildings' | 'pois' | 'itinerary' | 'rooms'>('buildings');
+  const [selectedBuildingId, setSelectedBuildingId] = useState<string | null>(null);
 
   const getDistance = (from: [number, number], to: [number, number]) => {
     const [lng1, lat1] = from;
@@ -64,9 +66,7 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
     const φ2 = lat2 * Math.PI / 180;
     const Δφ = (lat2 - lat1) * Math.PI / 180;
     const Δλ = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-      Math.cos(φ1) * Math.cos(φ2) *
-      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const d = R * c;
     return d;
@@ -117,68 +117,30 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
   }, [buildings, rooms, pois, itineraryPOIs, mapId]);
 
   const filtered = useMemo(() => {
-    if (query.length > 0) {
-      return searchData.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
-    }
-    if (userCoords) {
-      return [...searchData].sort((a, b) => {
-        const distA = getDistance(userCoords, a.coords);
-        const distB = getDistance(userCoords, b.coords);
-        return distA - distB;
-      });
-    }
-    return searchData;
-  }, [searchData, query, userCoords]);
+    let list: SearchableItem[] = [];
+    if (selectedTab === 'buildings') list = searchData.filter(i => i.type === 'building');
+    if (selectedTab === 'pois') list = searchData.filter(i => i.type === 'poi');
+    if (selectedTab === 'itinerary') list = searchData.filter(i => i.type === 'itinerary');
+    if (selectedTab === 'rooms' && selectedBuildingId) list = searchData.filter(i => i.type === 'room' && i.buildingId === selectedBuildingId);
+    if (query.length > 0) list = list.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+    if (userCoords && query.length === 0) list.sort((a, b) => getDistance(userCoords, a.coords) - getDistance(userCoords, b.coords));
+    return list;
+  }, [searchData, selectedTab, query, userCoords, selectedBuildingId]);
 
   const styles = StyleSheet.create({
-    container: {
-      position: 'absolute',
-      top: 10,
-      left: 10,
-      right: 10,
-      zIndex: 10,
-    },
-    input: {
-      backgroundColor: 'white',
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 16,
-      elevation: 2,
-      justifyContent: 'center',
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.3)',
-      justifyContent: 'flex-end',
-    },
-    modalContainer: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
-    modalContent: {
-      backgroundColor: 'white',
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      padding: 16,
-      maxHeight: '80%',
-    },
-    modalInput: {
-      backgroundColor: '#f0f0f0',
-      padding: 12,
-      borderRadius: 8,
-      fontSize: 16,
-      marginBottom: 10,
-    },
-    item: {
-      backgroundColor: 'white',
-      padding: 10,
-      borderBottomWidth: 1,
-      borderColor: '#eee',
-    },
-    itemText: {
-      fontSize: 14,
-      color: '#333',
-    },
+    container: { position: 'absolute', top: 10, left: 10, right: 10, zIndex: 10 },
+    input: { backgroundColor: 'white', padding: 12, borderRadius: 8, fontSize: 16, elevation: 2, justifyContent: 'center' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
+    modalContainer: { flex: 1, justifyContent: 'flex-end' },
+    modalContent: { backgroundColor: 'white', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, maxHeight: '80%' },
+    tabRow: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 10 },
+    tabButton: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#eee' },
+    activeTabButton: { backgroundColor: '#2A9D8F' },
+    tabText: { fontSize: 14, color: '#333' },
+    activeTabText: { color: 'white' },
+    modalInput: { backgroundColor: '#f0f0f0', padding: 12, borderRadius: 8, fontSize: 16, marginBottom: 10 },
+    item: { backgroundColor: 'white', padding: 10, borderBottomWidth: 1, borderColor: '#eee' },
+    itemText: { fontSize: 14, color: '#333' },
   });
 
   return (
@@ -189,23 +151,26 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
         </View>
       </TouchableOpacity>
 
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setModalVisible(false)}
-        >
+      <Modal visible={modalVisible} animationType="slide" transparent onRequestClose={() => setModalVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
           <View style={styles.modalContainer}>
-            <TouchableOpacity
-              activeOpacity={1}
-              style={styles.modalContent}
-              onPress={() => {}}
-            >
+            <TouchableOpacity activeOpacity={1} style={styles.modalContent} onPress={() => {}}>
+              <View style={styles.tabRow}>
+                <TouchableOpacity style={[styles.tabButton, selectedTab === 'buildings' && styles.activeTabButton]} onPress={() => setSelectedTab('buildings')}>
+                  <Text style={[styles.tabText, selectedTab === 'buildings' && styles.activeTabText]}>Buildings</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, selectedTab === 'pois' && styles.activeTabButton]} onPress={() => setSelectedTab('pois')}>
+                  <Text style={[styles.tabText, selectedTab === 'pois' && styles.activeTabText]}>POIs</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.tabButton, selectedTab === 'itinerary' && styles.activeTabButton]} onPress={() => setSelectedTab('itinerary')}>
+                  <Text style={[styles.tabText, selectedTab === 'itinerary' && styles.activeTabText]}>Itinerary</Text>
+                </TouchableOpacity>
+                {selectedBuildingId && (
+                  <TouchableOpacity style={[styles.tabButton, selectedTab === 'rooms' && styles.activeTabButton]} onPress={() => setSelectedTab('rooms')}>
+                    <Text style={[styles.tabText, selectedTab === 'rooms' && styles.activeTabText]}>Rooms</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
               <TextInput
                 style={styles.modalInput}
                 placeholder={placeholder}
@@ -216,24 +181,22 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
               <FlatList
                 data={filtered}
                 keyExtractor={(item) => `${item.type}-${item.id}`}
-                renderItem={({ item }) => {
-                  const distanceMeters = userCoords ? getDistance(userCoords, item.coords) : null;
-                  const distanceDisplay = distanceMeters !== null ? ` (${Math.round(distanceMeters)}m)` : '';
-                  return (
-                    <TouchableOpacity
-                      style={styles.item}
-                      onPress={() => {
-                        onSelect(item);
-                        setQuery('');
-                        setModalVisible(false);
-                      }}
-                    >
-                      <Text style={styles.itemText}>
-                        {item.name}{distanceDisplay}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.item}
+                    onPress={() => {
+                      if (item.type === 'building') {
+                        setSelectedBuildingId(item.id);
+                        setSelectedTab('rooms');
+                      }
+                      onSelect(item);
+                      setModalVisible(false);
+                      setQuery('');
+                    }}
+                  >
+                    <Text style={styles.itemText}>{item.name}</Text>
+                  </TouchableOpacity>
+                )}
                 keyboardShouldPersistTaps="handled"
               />
             </TouchableOpacity>
