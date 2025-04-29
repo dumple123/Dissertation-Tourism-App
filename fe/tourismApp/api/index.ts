@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import Constants from "expo-constants";
-import { getTokens, removeTokens } from "~/utils/tokenUtils";
+import { getTokens, removeTokens, saveTokens } from "~/utils/tokenUtils";
 import { refreshAccessToken } from "~/api/user";
 
 const API_URL = Constants.expoConfig?.extra?.API_URL;
@@ -42,11 +42,16 @@ axiosInstance.interceptors.response.use(
 
       const { refreshToken } = await getTokens();
       if (refreshToken) {
-        const newAccessToken = await refreshAccessToken(refreshToken);
+        try {
+          const { accessToken } = await refreshAccessToken(refreshToken); // extract new access token
 
-        if (newAccessToken) {
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axiosInstance(originalRequest); // retry original request
+          if (accessToken) {
+            await saveTokens(accessToken, refreshToken); // save new access token
+            originalRequest.headers.Authorization = `Bearer ${accessToken}`; // retry request with new token
+            return axiosInstance(originalRequest); // retry original request
+          }
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
         }
       }
 
