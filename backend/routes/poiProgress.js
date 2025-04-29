@@ -9,7 +9,7 @@ router.get('/user/:userId', async (req, res) => {
     const progress = await prisma.user_POI_Progress.findMany({
       where: { userId: req.params.userId },
       include: { 
-        poi: { select: { name: true, geojson: true, mapId: true } } // 🔥 Now includes POI name + geojson + mapId
+        poi: { select: { name: true, geojson: true, mapId: true } } // Now includes POI name + geojson + mapId
       },
     });
     res.json(progress);
@@ -46,7 +46,7 @@ router.get('/latest', async (req, res) => {
       take: limit,
       orderBy: { visitedAt: 'desc' },
       include: {
-        poi: { select: { name: true, geojson: true } }, // 🔥 Includes POI name + geojson for correct pin placement
+        poi: { select: { name: true, geojson: true } }, // Includes POI name + geojson for correct pin placement
         user: { select: { username: true } },
       },
     });
@@ -69,7 +69,7 @@ router.get('/user/:userId/latest', async (req, res) => {
       take: limit,
       orderBy: { visitedAt: 'desc' },
       include: {
-        poi: { select: { name: true, geojson: true } }, // 🔥 Includes POI name + geojson for correct pin placement
+        poi: { select: { name: true, geojson: true } }, // Includes POI name + geojson for correct pin placement
       },
     });
 

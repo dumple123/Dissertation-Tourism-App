@@ -167,6 +167,10 @@ export default function MapViewComponent() {
   const filteredRooms = rooms.filter((r) => r.floor === selectedFloor);
   const filteredMarkers = markers.filter((m) => m.floor === selectedFloor);
 
+  const searchPlaceholder = selectedBuilding
+  ? 'Search Rooms, Buildings & POIs...'
+  : 'Search Buildings & POIs...';
+
   return (
     <View style={styles.container}>
 
@@ -177,6 +181,8 @@ export default function MapViewComponent() {
         pois={pois}
         itineraryPOIs={itinerary}
         mapId={mapId}
+        userCoords={coords}
+        placeholder={searchPlaceholder} 
         onSelect={(item) => {
           if (item.type === 'building' || item.type === 'room') {
             const building = buildings.find((b) => b.id === item.buildingId);

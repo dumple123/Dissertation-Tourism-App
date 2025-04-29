@@ -82,7 +82,7 @@ router.get("/completed/:userId", async (req, res) => {
     res.json(completedMaps);
   } catch (err) {
     console.error("Error fetching completed maps:", err);
-    console.error("🔥 Error inside /completed/:userId route:", err);
+    console.error(" Error inside /completed/:userId route:", err);
     res.status(500).json({ error: "Failed to fetch completed maps" });
   }
 });

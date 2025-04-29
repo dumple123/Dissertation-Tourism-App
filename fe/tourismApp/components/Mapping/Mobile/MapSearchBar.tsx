@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, TextInput, FlatList, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TextInput, FlatList, TouchableOpacity, Text, StyleSheet, Modal } from 'react-native';
 import centroid from '@turf/centroid';
 import { Feature, Polygon, MultiPolygon } from 'geojson';
 
@@ -42,16 +42,39 @@ export interface SearchableItem {
 }
 
 interface MapSearchBarProps {
-  buildings: Building[];
-  rooms: Room[];
-  pois: POI[];
-  itineraryPOIs: ItineraryPOI[];
-  mapId: string | null;
-  onSelect: (item: SearchableItem) => void;
-}
+    buildings: Building[];
+    rooms: Room[];
+    pois: POI[];
+    itineraryPOIs: ItineraryPOI[];
+    mapId: string | null;
+    userCoords: [number, number] | null;
+    placeholder: string; 
+    onSelect: (item: SearchableItem) => void;
+  }
 
-export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, mapId, onSelect }: MapSearchBarProps) {
+export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, mapId, userCoords, placeholder, onSelect }: MapSearchBarProps) {
   const [query, setQuery] = useState('');
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const getDistance = (from: [number, number], to: [number, number]) => {
+    const [lng1, lat1] = from;
+    const [lng2, lat2] = to;
+
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lng2-lng1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    const d = R * c;
+    return d;
+  };
 
   const searchData = useMemo(() => {
     if (!mapId) return [];
@@ -111,39 +134,69 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
     return [...buildingItems, ...roomItems, ...poiItems, ...itineraryItems];
   }, [buildings, rooms, pois, itineraryPOIs, mapId]);
 
-  const filtered = searchData.filter((item) =>
-    item.name.toLowerCase().includes(query.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    if (query.length > 0) {
+      return searchData.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
+    }
+    if (userCoords) {
+      return [...searchData].sort((a, b) => {
+        const distA = getDistance(userCoords, a.coords);
+        const distB = getDistance(userCoords, b.coords);
+        return distA - distB;
+      });
+    }
+    return searchData;
+  }, [searchData, query, userCoords]);
 
   return (
     <View style={styles.container}>
-      <TextInput
-        style={styles.input}
-        placeholder="Search rooms, buildings, POIs..."
-        value={query}
-        onChangeText={setQuery}
-      />
+      <TouchableOpacity onPress={() => setModalVisible(true)}>
+        <View style={styles.input}>
+            <Text style={{ color: '#999' }}>{query || placeholder}</Text>
+        </View>
+        </TouchableOpacity>
 
-      {query.length > 0 && filtered.length > 0 && (
-        <FlatList
-          data={filtered}
-          keyExtractor={(item) => `${item.type}-${item.id}`}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.item}
-              onPress={() => {
-                onSelect(item);
-                setQuery('');
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TextInput
+                style={styles.modalInput}
+                placeholder={placeholder}
+                value={query}
+                onChangeText={setQuery}
+                autoFocus
+            />
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => `${item.type}-${item.id}`}
+              renderItem={({ item }) => {
+                const distanceMeters = userCoords ? getDistance(userCoords, item.coords) : null;
+                const distanceDisplay = distanceMeters !== null ? ` (${Math.round(distanceMeters)}m)` : '';
+                return (
+                  <TouchableOpacity
+                    style={styles.item}
+                    onPress={() => {
+                      onSelect(item);
+                      setQuery('');
+                      setModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.itemText}>
+                      {item.name}{distanceDisplay}
+                    </Text>
+                  </TouchableOpacity>
+                );
               }}
-            >
-              <Text style={styles.itemText}>
-                {item.name} ({item.type})
-              </Text>
-            </TouchableOpacity>
-          )}
-          keyboardShouldPersistTaps="handled"
-        />
-      )}
+              keyboardShouldPersistTaps="handled"
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -162,6 +215,26 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     fontSize: 16,
     elevation: 2,
+    justifyContent: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: '80%',
+  },
+  modalInput: {
+    backgroundColor: '#f0f0f0',
+    padding: 12,
+    borderRadius: 8,
+    fontSize: 16,
+    marginBottom: 10,
   },
   item: {
     backgroundColor: 'white',
