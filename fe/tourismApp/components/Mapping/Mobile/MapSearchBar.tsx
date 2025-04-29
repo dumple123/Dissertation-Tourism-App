@@ -22,6 +22,7 @@ export interface POI {
   id: string;
   name: string;
   mapId: string;
+  hidden: boolean;
   geojson: any;
 }
 
@@ -92,7 +93,7 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
       }));
 
     const poiItems = pois
-      .filter(p => p.mapId === mapId)
+      .filter(p => p.mapId === mapId && !p.hidden)
       .map(p => ({
         type: 'poi' as const,
         id: p.id,
