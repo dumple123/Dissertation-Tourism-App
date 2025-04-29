@@ -42,15 +42,15 @@ export interface SearchableItem {
 }
 
 interface MapSearchBarProps {
-    buildings: Building[];
-    rooms: Room[];
-    pois: POI[];
-    itineraryPOIs: ItineraryPOI[];
-    mapId: string | null;
-    userCoords: [number, number] | null;
-    placeholder: string; 
-    onSelect: (item: SearchableItem) => void;
-  }
+  buildings: Building[];
+  rooms: Room[];
+  pois: POI[];
+  itineraryPOIs: ItineraryPOI[];
+  mapId: string | null;
+  userCoords: [number, number] | null;
+  placeholder: string;
+  onSelect: (item: SearchableItem) => void;
+}
 
 export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, mapId, userCoords, placeholder, onSelect }: MapSearchBarProps) {
   const [query, setQuery] = useState('');
@@ -59,78 +59,60 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
   const getDistance = (from: [number, number], to: [number, number]) => {
     const [lng1, lat1] = from;
     const [lng2, lat2] = to;
-
     const R = 6371e3;
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lng2-lng1) * Math.PI/180;
-
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+      Math.cos(φ1) * Math.cos(φ2) *
+      Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const d = R * c;
     return d;
   };
 
   const searchData = useMemo(() => {
     if (!mapId) return [];
-
     const getGeoJSONCenter = (geojson: any): [number, number] => {
       try {
         const center = centroid(geojson as Feature<Polygon | MultiPolygon>);
         return center.geometry.coordinates as [number, number];
-      } catch (err) {
-        console.error('Failed to get center of geojson:', err);
+      } catch {
         return [0, 0];
       }
     };
-
-    const buildingItems = buildings
-      .filter(b => b.mapId === mapId)
-      .map(b => ({
-        type: 'building' as const,
-        id: b.id,
-        name: b.name,
-        buildingId: b.id,
-        coords: getGeoJSONCenter(b.geojson),
-      }));
-
+    const buildingItems = buildings.filter(b => b.mapId === mapId).map(b => ({
+      type: 'building' as const,
+      id: b.id,
+      name: b.name,
+      buildingId: b.id,
+      coords: getGeoJSONCenter(b.geojson),
+    }));
     const buildingMap = new Map(buildings.map(b => [b.id, b]));
-
-    const roomItems = rooms
-      .filter(r => {
-        const building = buildingMap.get(r.buildingId);
-        return building?.mapId === mapId;
-      })
-      .map(r => ({
-        type: 'room' as const,
-        id: r.id,
-        name: r.name,
-        buildingId: r.buildingId,
-        floor: r.floor,
-        coords: getGeoJSONCenter(r.geojson),
-      }));
-
-    const poiItems = pois
-      .filter(p => p.mapId === mapId && !p.hidden)
-      .map(p => ({
-        type: 'poi' as const,
-        id: p.id,
-        name: p.name,
-        coords: p.geojson?.coordinates,
-      }));
-
+    const roomItems = rooms.filter(r => {
+      const building = buildingMap.get(r.buildingId);
+      return building?.mapId === mapId;
+    }).map(r => ({
+      type: 'room' as const,
+      id: r.id,
+      name: r.name,
+      buildingId: r.buildingId,
+      floor: r.floor,
+      coords: getGeoJSONCenter(r.geojson),
+    }));
+    const poiItems = pois.filter(p => p.mapId === mapId && !p.hidden).map(p => ({
+      type: 'poi' as const,
+      id: p.id,
+      name: p.name,
+      coords: p.geojson?.coordinates,
+    }));
     const itineraryItems = itineraryPOIs.map(i => ({
       type: 'itinerary' as const,
       id: i.id,
       name: i.name,
       coords: i.coords,
     }));
-
     return [...buildingItems, ...roomItems, ...poiItems, ...itineraryItems];
   }, [buildings, rooms, pois, itineraryPOIs, mapId]);
 
@@ -148,102 +130,116 @@ export default function MapSearchBar({ buildings, rooms, pois, itineraryPOIs, ma
     return searchData;
   }, [searchData, query, userCoords]);
 
+  const styles = StyleSheet.create({
+    container: {
+      position: 'absolute',
+      top: 10,
+      left: 10,
+      right: 10,
+      zIndex: 10,
+    },
+    input: {
+      backgroundColor: 'white',
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 16,
+      elevation: 2,
+      justifyContent: 'center',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+      justifyContent: 'flex-end',
+    },
+    modalContainer: {
+      flex: 1,
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: 'white',
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 16,
+      maxHeight: '80%',
+    },
+    modalInput: {
+      backgroundColor: '#f0f0f0',
+      padding: 12,
+      borderRadius: 8,
+      fontSize: 16,
+      marginBottom: 10,
+    },
+    item: {
+      backgroundColor: 'white',
+      padding: 10,
+      borderBottomWidth: 1,
+      borderColor: '#eee',
+    },
+    itemText: {
+      fontSize: 14,
+      color: '#333',
+    },
+  });
+
   return (
     <View style={styles.container}>
       <TouchableOpacity onPress={() => setModalVisible(true)}>
         <View style={styles.input}>
-            <Text style={{ color: '#999' }}>{query || placeholder}</Text>
+          <Text style={{ color: '#999' }}>{query || placeholder}</Text>
         </View>
-        </TouchableOpacity>
+      </TouchableOpacity>
 
       <Modal
         visible={modalVisible}
         animationType="slide"
-        transparent={true}
+        transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TextInput
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <TouchableOpacity
+              activeOpacity={1}
+              style={styles.modalContent}
+              onPress={() => {}}
+            >
+              <TextInput
                 style={styles.modalInput}
                 placeholder={placeholder}
                 value={query}
                 onChangeText={setQuery}
                 autoFocus
-            />
-            <FlatList
-              data={filtered}
-              keyExtractor={(item) => `${item.type}-${item.id}`}
-              renderItem={({ item }) => {
-                const distanceMeters = userCoords ? getDistance(userCoords, item.coords) : null;
-                const distanceDisplay = distanceMeters !== null ? ` (${Math.round(distanceMeters)}m)` : '';
-                return (
-                  <TouchableOpacity
-                    style={styles.item}
-                    onPress={() => {
-                      onSelect(item);
-                      setQuery('');
-                      setModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.itemText}>
-                      {item.name}{distanceDisplay}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              }}
-              keyboardShouldPersistTaps="handled"
-            />
+              />
+              <FlatList
+                data={filtered}
+                keyExtractor={(item) => `${item.type}-${item.id}`}
+                renderItem={({ item }) => {
+                  const distanceMeters = userCoords ? getDistance(userCoords, item.coords) : null;
+                  const distanceDisplay = distanceMeters !== null ? ` (${Math.round(distanceMeters)}m)` : '';
+                  return (
+                    <TouchableOpacity
+                      style={styles.item}
+                      onPress={() => {
+                        onSelect(item);
+                        setQuery('');
+                        setModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.itemText}>
+                        {item.name}{distanceDisplay}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                }}
+                keyboardShouldPersistTaps="handled"
+              />
+            </TouchableOpacity>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    right: 10,
-    zIndex: 10,
-  },
-  input: {
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    elevation: 2,
-    justifyContent: 'center',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 16,
-    maxHeight: '80%',
-  },
-  modalInput: {
-    backgroundColor: '#f0f0f0',
-    padding: 12,
-    borderRadius: 8,
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  item: {
-    backgroundColor: 'white',
-    padding: 10,
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-  },
-  itemText: {
-    fontSize: 14,
-    color: '#333',
-  },
-});
