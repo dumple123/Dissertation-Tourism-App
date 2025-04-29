@@ -1,36 +1,52 @@
-import React from 'react';
-import { ScrollView, Text, StyleSheet, View } from 'react-native';
+import React, { useState } from 'react';
+import { Text, StyleSheet, View, FlatList } from 'react-native';
 import POIFeed from '~/components/Feed/POIFeed';
 import CompletedMapsProfile from '~/components/User/MobileCompletedMaps';
 import { useAuth } from '~/components/User/AuthContext'; 
 
 const ProfilePage: React.FC = () => {
   const { user } = useAuth(); 
+  const [scrollEnabled, setScrollEnabled] = useState(true); 
 
   if (!user) {
     return (
-      <ScrollView contentContainerStyle={styles.container}>
+      <View style={styles.centered}>
         <Text style={styles.title}>Loading...</Text>
-      </ScrollView>
+      </View>
     );
   }
 
   const { username, id: userId } = user;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{username}</Text>
+    <FlatList
+      scrollEnabled={scrollEnabled} // Control scroll
+      ListHeaderComponent={
+        <>
+          <Text style={styles.title}>{username}</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Completed Maps</Text>
-        <CompletedMapsProfile userId={userId} />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recent POI Visits</Text>
-        <POIFeed userId={userId} limit={10} />
-      </View>
-    </ScrollView>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Completed Maps</Text>
+            {/* Pass handlers to the CompletedMapsProfile */}
+            <CompletedMapsProfile
+              userId={userId}
+              onTouchStart={() => setScrollEnabled(false)}
+              onTouchEnd={() => setScrollEnabled(true)}
+            />
+          </View>
+        </>
+      }
+      data={[{}]} // Dummy item
+      keyExtractor={(_, index) => index.toString()}
+      renderItem={() => (
+        <POIFeed
+          userId={userId}
+          limit={10}
+        />
+      )}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    />
   );
 };
 
@@ -39,6 +55,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 40,
     paddingBottom: 100,
+    backgroundColor: '#f9f9f9',
+    flexGrow: 1,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#f9f9f9',
   },
   title: {

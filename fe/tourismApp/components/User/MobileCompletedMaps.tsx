@@ -13,7 +13,17 @@ interface CompletedMap {
   pois: { geojson: any }[];
 }
 
-export default function CompletedMapsProfile({ userId }: { userId: string }) {
+interface CompletedMapsProfileProps {
+  userId: string;
+  onTouchStart?: () => void; 
+  onTouchEnd?: () => void;
+}
+
+export default function CompletedMapsProfile({
+  userId,
+  onTouchStart,
+  onTouchEnd,
+}: CompletedMapsProfileProps) {
   const [completedMaps, setCompletedMaps] = useState<CompletedMap[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -73,6 +83,8 @@ export default function CompletedMapsProfile({ userId }: { userId: string }) {
         scaleBarEnabled={false}
         attributionEnabled={false}
         logoEnabled={false}
+        onTouchStart={onTouchStart} 
+        onTouchEnd={onTouchEnd}
       >
         <MapboxGL.Camera
           centerCoordinate={[0, 0]}
