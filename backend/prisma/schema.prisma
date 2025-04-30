@@ -34,7 +34,7 @@ model Building {
   geojson         Json
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
-  map             Map              @relation(fields: [mapId], references: [id])
+  map             Map              @relation(fields: [mapId], references: [id], onDelete: Cascade) 
   interiorMarkers InteriorMarker[]
   rooms           Room[]
 }
