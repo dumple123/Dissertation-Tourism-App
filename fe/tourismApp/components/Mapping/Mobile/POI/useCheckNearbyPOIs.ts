@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { getDistance } from 'geolib';
 import { useLocation } from '~/components/Mapping/utils/useLocation';
 import { markPOIAsVisited } from '~/api/poiProgress';
@@ -26,29 +26,32 @@ export function useCheckNearbyPOIs({
   refreshProgress,
 }: UseCheckNearbyPOIsOptions) {
   const { coords } = useLocation();
+  const sessionVisited = useRef<Set<string>>(new Set());
 
+  // --- Memoized check function ---
   useEffect(() => {
-   if (!coords || !userId) return;
+    if (!coords || !userId || pois.length === 0) return;
 
     const checkNearby = async () => {
-      if (!coords || !userId) return;  
-
       let visitedAny = false;
 
       for (const poi of pois) {
-        if (visitedPOIIds.has(poi.id)) continue;
+        const poiId = poi.id;
 
-        const poiCoords = poi.geojson.coordinates;
+        // Skip if already visited this session or previously
+        if (visitedPOIIds.has(poiId) || sessionVisited.current.has(poiId)) continue;
 
+        const [lng, lat] = poi.geojson.coordinates;
         const distance = getDistance(
           { latitude: coords[1], longitude: coords[0] },
-          { latitude: poiCoords[1], longitude: poiCoords[0] }
+          { latitude: lat, longitude: lng }
         );
 
         if (distance <= radiusMeters) {
           try {
-            await markPOIAsVisited({ userId, poiId: poi.id });
-            console.log(`Marked POI ${poi.id} as visited (distance: ${distance}m)`);
+            await markPOIAsVisited({ userId, poiId });
+            sessionVisited.current.add(poiId);
+            console.log(`Marked POI ${poiId} as visited (distance: ${distance}m)`);
             visitedAny = true;
           } catch (err) {
             console.error('Failed to mark POI as visited:', err);
@@ -56,14 +59,13 @@ export function useCheckNearbyPOIs({
         }
       }
 
-      // Only refresh progress if any POIs were actually visited
       if (visitedAny) {
-        await refreshProgress();
+        await refreshProgress(); // Update global context
       }
     };
 
-    const interval = setInterval(checkNearby, 5000);
+    const interval = setInterval(checkNearby, 3000); // More responsive
 
     return () => clearInterval(interval);
-  }, [coords, pois, userId, visitedPOIIds, radiusMeters, refreshProgress]);
+  }, [coords?.[0], coords?.[1], pois, userId, radiusMeters]); // minimal, stable deps
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import MapboxGL from '@rnmapbox/maps';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { usePOIProgress } from '~/components/Mapping/Mobile/POI/POIProgressProvider';
@@ -18,47 +18,43 @@ export default function MobilePOIRenderer({
   zoomLevel,
 }: MobilePOIRendererProps) {
   const { visitedPOIIds } = usePOIProgress();
+  const visitedThisSession = useRef<Set<string>>(new Set());
 
-  if (!pois || pois.length === 0) return null;
+  // Per-POI animation state
+  const animations = useMemo(() => {
+    const animMap: Record<string, Animated.Value> = {};
+    pois.forEach((poi) => {
+      animMap[poi.id] = new Animated.Value(1);
+    });
+    return animMap;
+  }, [pois]);
 
   const getMarkerSize = () => {
-    if (zoomLevel >= 16) {
-      return 40; 
-    } else if (zoomLevel >= 12) {
-      const minZoom = 12;
-      const maxZoom = 16;
-      const minSize = 12;
-      const maxSize = 40;
-      const t = (zoomLevel - minZoom) / (maxZoom - minZoom);
-      return minSize + (maxSize - minSize) * t; 
-    } else {
-      return 18; 
-    }
+    if (zoomLevel >= 16) return 40;
+    if (zoomLevel >= 12) return 12 + (zoomLevel - 12) * 7;
+    return 18;
   };
 
   const markerSize = getMarkerSize();
 
-  // Sort POIs: itinerary first, then normal ones
-  const sortedPOIs = [...pois].sort((a, b) => {
-    if (a.type === 'itinerary' && b.type !== 'itinerary') return -1;
-    if (b.type === 'itinerary' && a.type !== 'itinerary') return 1;
-    return 0;
-  });
+  const sortedPOIs = [...pois].sort((a, b) =>
+    a.type === 'itinerary' && b.type !== 'itinerary' ? -1 : 0
+  );
 
   return (
     <>
       {sortedPOIs.map((poi) => {
-        // Always declare hooks first!
-        const scaleAnim = useRef(new Animated.Value(1)).current;
-        const wasVisited = useRef(false);
-
         const coords = poi.geojson?.coordinates ?? poi.coords;
+        if (!coords || coords.length !== 2) return null;
+
         const isVisited = visitedPOIIds.has(poi.id);
         const isItinerary = poi.type === 'itinerary';
+        const scaleAnim = animations[poi.id];
 
+        // Run animation once per POI visit
         useEffect(() => {
-          if (isVisited && !wasVisited.current) {
-            wasVisited.current = true;
+          if (isVisited && !visitedThisSession.current.has(poi.id)) {
+            visitedThisSession.current.add(poi.id);
             Animated.sequence([
               Animated.timing(scaleAnim, {
                 toValue: 2.2,
@@ -85,12 +81,9 @@ export default function MobilePOIRenderer({
           }
         }, [isVisited]);
 
-        // Now safe to conditionally return
-        if (!coords || coords.length !== 2) return null;
-
         return (
           <MapboxGL.PointAnnotation
-            key={poi.id}
+            key={`${poi.id}-${isVisited ? 'v' : 'u'}`} // This is critical to force re-render
             id={`poi-${poi.id}`}
             coordinate={[coords[0], coords[1]]}
             onSelected={() => onPOISelect?.(poi)}
@@ -137,18 +130,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   itineraryMarker: {
-    backgroundColor: '#800080', 
+    backgroundColor: '#800080',
     borderWidth: 3,
     borderColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   selectedMarker: {
-    borderColor: '#FFD700', 
+    borderColor: '#FFD700',
     borderWidth: 3,
   },
   visitedMarker: {
-    backgroundColor: '#2ecc71', 
+    backgroundColor: '#2ecc71',
   },
   hiddenMarkerText: {
     fontWeight: 'bold',
