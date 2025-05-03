@@ -27,16 +27,8 @@ export default function SaveButton({
         name: buildingName,
       },
     };
-
     try {
-      await createBuilding({
-        name: buildingName!,
-        mapId,
-        numFloors: 1,
-        bottomFloor: 0,
-        geojson,
-      });
-
+      await createBuilding({name: buildingName!, mapId, numFloors: 1, bottomFloor: 0, geojson,});
       alert(`Saved "${buildingName}" to backend!`);
       exitDrawing();
       onSaveSuccess();

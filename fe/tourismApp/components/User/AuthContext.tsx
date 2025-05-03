@@ -23,18 +23,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     checkAuth();
   }, []);
 
+  // Attempts to log in a user using provided credentials
   const loginUser = async (email: string, password: string) => {
-    const result = await login(email, password);
+    const result = await login(email, password); // Call backend login endpoint
     if (result.error) {
-      return { error: result.error as string };
+      return { error: result.error as string }; // Return error for UI feedback
     }
 
     if (result.user) {
-      setUser(result.user);
-      await AsyncStorage.setItem('user', JSON.stringify(result.user)); // Save to storage
+      setUser(result.user); // Update app state
+      await AsyncStorage.setItem('user', JSON.stringify(result.user)); // Persist user info locally (mobile only)
     }
 
-    setIsAuthenticated(true);
+    setIsAuthenticated(true); // Enable access to protected screens
     return { success: true as const };
   };
 
