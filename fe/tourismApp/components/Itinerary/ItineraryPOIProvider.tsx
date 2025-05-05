@@ -57,7 +57,7 @@ export const ItineraryPOIProvider = ({ children }: { children: ReactNode }) => {
   // -- Add a new POI (generate ID internally)
   const addPOI = async (poi: Omit<ItineraryPOI, 'id'>) => {
     const newPOI: ItineraryPOI = {
-        id: uuid.v4() as string,
+      id: uuid.v4().toString(),
       ...poi,
     };
     const updated = [...itinerary, newPOI];
