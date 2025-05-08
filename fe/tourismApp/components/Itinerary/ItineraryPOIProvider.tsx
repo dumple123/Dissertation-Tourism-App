@@ -12,7 +12,7 @@ export interface ItineraryPOI {
 // -- Context type
 interface ItineraryPOIContextType {
   itinerary: ItineraryPOI[];
-  addPOI: (poi: Omit<ItineraryPOI, 'id'>) => Promise<void>; // Accepts POI *without* ID
+  addPOI: (poi: Omit<ItineraryPOI, 'id'>) => Promise<void>;
   removePOI: (id: string) => Promise<void>;
   clearItinerary: () => Promise<void>;
 }
@@ -47,8 +47,8 @@ export const ItineraryPOIProvider = ({ children }: { children: ReactNode }) => {
   // -- Save itinerary to local storage
   const saveItinerary = async (updated: ItineraryPOI[]) => {
     try {
-      setItinerary(updated);
       await AsyncStorage.setItem('itinerary', JSON.stringify(updated));
+      setItinerary(updated); // update after saving to storage
     } catch (error) {
       console.error('Failed to save itinerary:', error);
     }
@@ -66,15 +66,20 @@ export const ItineraryPOIProvider = ({ children }: { children: ReactNode }) => {
 
   // -- Remove a POI by id
   const removePOI = async (id: string) => {
-    const updated = itinerary.filter((item) => item.id !== id);
-    await saveItinerary(updated);
+    setItinerary((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      AsyncStorage.setItem('itinerary', JSON.stringify(updated)).catch((err) =>
+        console.error('Failed to save after deletion:', err)
+      );
+      return updated;
+    });
   };
 
   // -- Clear the entire itinerary
   const clearItinerary = async () => {
     try {
-      setItinerary([]);
       await AsyncStorage.removeItem('itinerary');
+      setItinerary([]);
     } catch (error) {
       console.error('Failed to clear itinerary:', error);
     }
