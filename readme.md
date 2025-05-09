@@ -66,50 +66,59 @@ The initial implementation focuses on the Newcastle University campus but is des
 
 1. Clone the repository:
 
+   ```bash
    git clone https://github.com/your-username/tourism-mapping-app.git
    cd tourism-mapping-app
-
+   ```
 
 2. Install backend dependencies:
 
+   ```bash
    cd backend
    npm install
-
+   ```
 
 3. Set up environment variables in `backend/.env`:
 
+   ```bash
    DATABASE_URL=postgresql://user:password@localhost:5432/dbname
    ACCESS_TOKEN_SECRET=your_access_secret
    REFRESH_TOKEN_SECRET=your_refresh_secret
-
+   ```
 
 4. Run database migrations:
 
+   ```bash
    npx prisma migrate dev
-
+   ```
 
 5. Start the backend server:
 
+   ```bash
    npm run dev
-
+   ```
 
 6. Install frontend dependencies:
 
+   ```bash
    cd ../frontend
    npm install
-
+   ```
 
 7. Create `frontend/.env` with your Mapbox access token:
 
+   ```bash
    MAPBOX_ACCESS_TOKEN=your_mapbox_token
-
+   ```
 
 8. Run the frontend:
 
+   ```bash
    expo start --web
-
+   ```
 
 To launch the Android version on a physical device or emulator:
 
+```bash
 expo start --android
-
+```
